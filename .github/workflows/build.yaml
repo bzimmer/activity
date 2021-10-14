@@ -14,16 +14,14 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Install Task
+      uses: arduino/setup-task@v1
     - name: Test
-      run: go test ./...
-      if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
-    - name: Test Coverage
-      run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
-      if: matrix.os == 'ubuntu-latest'
+      run: task test
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage.out
+        files: ./dist/coverage.txt
         verbose: true
       if: matrix.os == 'ubuntu-latest'

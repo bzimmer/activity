@@ -166,18 +166,15 @@ func (s *RidesService) StatusWithUser(ctx context.Context, userID UserID, upload
 	return res, nil
 }
 
-// AvailableStreams returns the list of valid stream names
+// StreamSets returns the list of valid stream names
 func (s *RidesService) StreamSets() map[string]string {
-	q := make(map[string]string)
-	for k, v := range streamsets {
-		q[k] = v
-	}
-	return q
+	return streamsets()
 }
 
 func validateStreams(streams []string) error {
+	x := streamsets()
 	for i := range streams {
-		_, ok := streamsets[streams[i]]
+		_, ok := x[streams[i]]
 		if !ok {
 			return fmt.Errorf("invalid stream '%s'", streams[i])
 		}
@@ -186,26 +183,28 @@ func validateStreams(streams []string) error {
 }
 
 // https://www.cyclinganalytics.com/developer/api#/ride/ride_id
-var streamsets = map[string]string{
-	"cadence":                "",
-	"distance":               "The sequence of distance values for this stream, in kilometers [float]",
-	"elevation":              "The sequence of elevation values for this stream, in meters [float]",
-	"gears":                  "",
-	"gradient":               "The sequence of grade values for this stream, as percents of a grade [float]",
-	"heart_rate_variability": "",
-	"heartrate":              "The sequence of heart rate values for this stream, in beats per minute [integer]",
-	"latitude":               "",
-	"longitude":              "",
-	"lrbalance":              "",
-	"pedal_smoothness":       "",
-	"platform_center_offset": "",
-	"power_direction":        "",
-	"power_phase":            "",
-	"power":                  "",
-	"respiration_rate":       "",
-	"smo2":                   "",
-	"speed":                  "The sequence of speed values for this stream, in meters per second [float]",
-	"temperature":            "The sequence of temperature values for this stream, in celsius degrees [float]",
-	"thb":                    "",
-	"torque_effectiveness":   "",
+func streamsets() map[string]string {
+	return map[string]string{
+		"cadence":                "",
+		"distance":               "The sequence of distance values for this stream, in kilometers [float]",
+		"elevation":              "The sequence of elevation values for this stream, in meters [float]",
+		"gears":                  "",
+		"gradient":               "The sequence of grade values for this stream, as percents of a grade [float]",
+		"heart_rate_variability": "",
+		"heartrate":              "The sequence of heart rate values for this stream, in beats per minute [integer]",
+		"latitude":               "",
+		"longitude":              "",
+		"lrbalance":              "",
+		"pedal_smoothness":       "",
+		"platform_center_offset": "",
+		"power_direction":        "",
+		"power_phase":            "",
+		"power":                  "",
+		"respiration_rate":       "",
+		"smo2":                   "",
+		"speed":                  "The sequence of speed values for this stream, in meters per second [float]",
+		"temperature":            "The sequence of temperature values for this stream, in celsius degrees [float]",
+		"thb":                    "",
+		"torque_effectiveness":   "",
+	}
 }

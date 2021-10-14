@@ -1,6 +1,6 @@
 package strava
 
-//go:generate genwith --do --client --endpoint --config --token --ratelimit --package strava
+//go:generate genwith --do --client --endpoint-func --config --token --ratelimit --package strava
 
 import (
 	"bytes"
@@ -23,13 +23,15 @@ const (
 )
 
 // Endpoint is Strava's OAuth 2.0 endpoint
-var Endpoint = oauth2.Endpoint{
-	AuthURL:   "https://www.strava.com/oauth/authorize",
-	TokenURL:  "https://www.strava.com/oauth/token",
-	AuthStyle: oauth2.AuthStyleAutoDetect,
+func Endpoint() oauth2.Endpoint {
+	return oauth2.Endpoint{
+		AuthURL:   "https://www.strava.com/oauth/authorize",
+		TokenURL:  "https://www.strava.com/oauth/token",
+		AuthStyle: oauth2.AuthStyleAutoDetect,
+	}
 }
 
-// Client for communicating with Strava
+// Client for accessing Strava's API
 type Client struct {
 	client  *http.Client
 	token   *oauth2.Token
