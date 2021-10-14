@@ -1,6 +1,6 @@
 package cyclinganalytics
 
-//go:generate genwith --do --client --endpoint --config --token --ratelimit --package cyclinganalytics
+//go:generate genwith --do --client --endpoint-func --config --token --ratelimit --package cyclinganalytics
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 const baseURL = "https://www.cyclinganalytics.com/api"
 
-// Client .
+// Client for accessing Cycling Analytics' API
 type Client struct {
 	config oauth2.Config
 	token  *oauth2.Token
@@ -27,10 +27,12 @@ type Client struct {
 }
 
 // Endpoint is CyclingAnalytics's OAuth 2.0 endpoint
-var Endpoint = oauth2.Endpoint{
-	AuthURL:   "https://www.cyclinganalytics.com/api/auth",
-	TokenURL:  "https://www.cyclinganalytics.com/api/token",
-	AuthStyle: oauth2.AuthStyleAutoDetect,
+func Endpoint() oauth2.Endpoint {
+	return oauth2.Endpoint{
+		AuthURL:   "https://www.cyclinganalytics.com/api/auth",
+		TokenURL:  "https://www.cyclinganalytics.com/api/token",
+		AuthStyle: oauth2.AuthStyleAutoDetect,
+	}
 }
 
 func withServices() Option {

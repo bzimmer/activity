@@ -10,14 +10,6 @@ import (
 	"github.com/bzimmer/httpwares"
 )
 
-var (
-	tests = map[string]string{
-		"apikey":     "fooKey",
-		"version":    "2",
-		"auth_token": "barToken",
-	}
-)
-
 func newClient(status int, filename string) (*rwgps.Client, error) {
 	return rwgps.NewClient(
 		rwgps.WithTransport(&httpwares.TestDataTransport{
@@ -27,12 +19,15 @@ func newClient(status int, filename string) (*rwgps.Client, error) {
 			Requester: func(req *http.Request) error {
 				var body map[string]interface{}
 				decoder := json.NewDecoder(req.Body)
-				err := decoder.Decode(&body)
-				if err != nil {
+				if err := decoder.Decode(&body); err != nil {
 					return err
 				}
 				// confirm the body has the expected key:value pairs
-				for key, value := range tests {
+				for key, value := range map[string]string{
+					"apikey":     "fooKey",
+					"version":    "2",
+					"auth_token": "barToken",
+				} {
 					v := body[key]
 					if v != value {
 						return fmt.Errorf("expected %s == '%v', not '%v'", key, value, v)

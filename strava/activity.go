@@ -109,7 +109,7 @@ func (s *ActivityService) Activity(ctx context.Context, activityID int64, stream
 		return nil, err
 	}
 	act.Streams = sms
-	return act, err
+	return act, nil
 }
 
 // Activities returns a channel for activities and errors for an athlete
@@ -208,32 +208,31 @@ func (s *ActivityService) Status(ctx context.Context, uploadID int64) (*Upload, 
 }
 
 // https://developers.strava.com/docs/reference/#api-models-StreamSet
-var streamsets = map[string]string{
-	"altitude":        "The sequence of altitude values for this stream, in meters [float]",
-	"cadence":         "The sequence of cadence values for this stream, in rotations per minute [integer]",
-	"distance":        "The sequence of distance values for this stream, in meters [float]",
-	"grade_smooth":    "The sequence of grade values for this stream, as percents of a grade [float]",
-	"heartrate":       "The sequence of heart rate values for this stream, in beats per minute [integer]",
-	"latlng":          "The sequence of lat/long values for this stream [float, float]",
-	"moving":          "The sequence of moving values for this stream, as boolean values [boolean]",
-	"temp":            "The sequence of temperature values for this stream, in celsius degrees [float]",
-	"time":            "The sequence of time values for this stream, in seconds [integer]",
-	"velocity_smooth": "The sequence of velocity values for this stream, in meters per second [float]",
-	"watts":           "The sequence of power values for this stream, in watts [integer]",
+func streamsets() map[string]string {
+	return map[string]string{
+		"altitude":        "The sequence of altitude values for this stream, in meters [float]",
+		"cadence":         "The sequence of cadence values for this stream, in rotations per minute [integer]",
+		"distance":        "The sequence of distance values for this stream, in meters [float]",
+		"grade_smooth":    "The sequence of grade values for this stream, as percents of a grade [float]",
+		"heartrate":       "The sequence of heart rate values for this stream, in beats per minute [integer]",
+		"latlng":          "The sequence of lat/long values for this stream [float, float]",
+		"moving":          "The sequence of moving values for this stream, as boolean values [boolean]",
+		"temp":            "The sequence of temperature values for this stream, in celsius degrees [float]",
+		"time":            "The sequence of time values for this stream, in seconds [integer]",
+		"velocity_smooth": "The sequence of velocity values for this stream, in meters per second [float]",
+		"watts":           "The sequence of power values for this stream, in watts [integer]",
+	}
 }
 
-// AvailableStreams returns the list of valid stream names
+// StreamSets returns the list of valid stream names
 func (s *ActivityService) StreamSets() map[string]string {
-	q := make(map[string]string)
-	for k, v := range streamsets {
-		q[k] = v
-	}
-	return q
+	return streamsets()
 }
 
 func (s *ActivityService) validateStreams(streams []string) error {
+	x := streamsets()
 	for i := range streams {
-		_, ok := streamsets[streams[i]]
+		_, ok := x[streams[i]]
 		if !ok {
 			return fmt.Errorf("invalid stream '%s'", streams[i])
 		}

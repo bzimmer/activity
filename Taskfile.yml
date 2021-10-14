@@ -39,3 +39,9 @@ tasks:
     desc: Run code generation
     cmds:
       - go generate ./...
+
+  lint:
+    desc: Runs the linter
+    cmds:
+      - go vet ./...
+      - golangci-lint -v run
