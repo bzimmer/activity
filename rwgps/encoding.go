@@ -10,10 +10,10 @@ import (
 	"github.com/bzimmer/activity"
 )
 
-var _ activity.GPXer = (*Trip)(nil)
-var _ activity.GeoJSONer = (*Trip)(nil)
+var _ activity.GPXEncoder = (*Trip)(nil)
+var _ activity.GeoJSONEncoder = (*Trip)(nil)
 
-func (t *Trip) GeoJSON() (*geojson.Feature, error) {
+func (t *Trip) GeoJSON() (*geojson.FeatureCollection, error) {
 	layout := geom.XYZ
 	dim, n := layout.Stride(), len(t.TrackPoints)
 	coords := make([]float64, dim*n)
@@ -24,16 +24,19 @@ func (t *Trip) GeoJSON() (*geojson.Feature, error) {
 		coords[x+2] = tp.Elevation.Meters()
 	}
 	// @todo add streams
-	g := &geojson.Feature{
-		ID:       strconv.FormatInt(t.ID, 10),
-		Geometry: geom.NewLineStringFlat(layout, coords),
-		Properties: map[string]interface{}{
-			"type":   t.Type,
-			"name":   t.Name,
-			"source": _baseURL,
+	return &geojson.FeatureCollection{
+		Features: []*geojson.Feature{
+			{
+				ID:       strconv.FormatInt(t.ID, 10),
+				Geometry: geom.NewLineStringFlat(layout, coords),
+				Properties: map[string]interface{}{
+					"type":   t.Type,
+					"name":   t.Name,
+					"source": _baseURL,
+				},
+			},
 		},
-	}
-	return g, nil
+	}, nil
 }
 
 func (t *Trip) GPX() (*gpx.GPX, error) {

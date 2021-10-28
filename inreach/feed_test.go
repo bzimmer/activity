@@ -67,10 +67,6 @@ func TestFeed(t *testing.T) {
 			feed, err := client.Feed.Feed(context.Background(), tt.user, opt)
 			a.NoError(err)
 			a.NotNil(feed)
-
-			x, err := feed.GeoJSON()
-			a.NoError(err)
-			a.NotNil(x)
 		})
 	}
 }

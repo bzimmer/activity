@@ -35,31 +35,37 @@ const (
 	meupload = "me/upload"
 )
 
-func (r *RideOptions) values() (*url.Values, error) {
-	v := &url.Values{}
-	if r.Streams != nil {
-		if err := validateStreams(r.Streams); err != nil {
-			return nil, err
+func WithRideOptions(r RideOptions) APIOption {
+	return func(v url.Values) error {
+		if r.Streams != nil {
+			if err := validateStreams(r.Streams); err != nil {
+				return err
+			}
+			v.Set("streams", strings.Join(r.Streams, ","))
 		}
-		v.Set("streams", strings.Join(r.Streams, ","))
+		if r.Curves.AveragePower && r.Curves.EffectivePower {
+			v.Set("curves", "true")
+		} else {
+			v.Set("power_curve", fmt.Sprintf("%t", r.Curves.AveragePower))
+			v.Set("epower_curve", fmt.Sprintf("%t", r.Curves.EffectivePower))
+		}
+		return nil
 	}
-	if r.Curves.AveragePower && r.Curves.EffectivePower {
-		v.Set("curves", "true")
-	} else {
-		v.Set("power_curve", fmt.Sprintf("%t", r.Curves.AveragePower))
-		v.Set("epower_curve", fmt.Sprintf("%t", r.Curves.EffectivePower))
-	}
-	return v, nil
 }
 
 // Ride returns a single ride with available options
-func (s *RidesService) Ride(ctx context.Context, rideID int64, opts RideOptions) (*Ride, error) {
+func (s *RidesService) Ride(ctx context.Context, rideID UserID, opts ...APIOption) (*Ride, error) {
 	uri := fmt.Sprintf("ride/%d", rideID)
-	params, err := opts.values()
-	if err != nil {
-		return nil, err
+	v := url.Values{}
+	for i := range opts {
+		f := opts[i]
+		if f != nil {
+			if err := f(v); err != nil {
+				return nil, err
+			}
+		}
 	}
-	req, err := s.client.newAPIRequest(ctx, http.MethodGet, uri, params, nil)
+	req, err := s.client.newAPIRequest(ctx, http.MethodGet, uri, &v, nil)
 	if err != nil {
 		return nil, err
 	}

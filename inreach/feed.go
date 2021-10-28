@@ -11,7 +11,7 @@ import (
 type FeedService service
 
 // Feed returns the feed for the user in the (optionally) specified time range
-func (s *FeedService) Feed(ctx context.Context, user string, opts ...APIOption) (*KML, error) {
+func (s *FeedService) Feed(ctx context.Context, user string, opts ...APIOption) (*Feed, error) {
 	v := make(url.Values)
 	for _, opt := range opts {
 		if opt == nil {
@@ -26,7 +26,7 @@ func (s *FeedService) Feed(ctx context.Context, user string, opts ...APIOption) 
 	if err != nil {
 		return nil, err
 	}
-	var feed KML
+	var feed Feed
 	err = s.client.do(req, &feed)
 	if err != nil {
 		return nil, err

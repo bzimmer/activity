@@ -12,8 +12,8 @@ import (
 	"github.com/bzimmer/activity"
 )
 
-var _ activity.GPXer = (*Route)(nil)
-var _ activity.GPXer = (*Activity)(nil)
+var _ activity.GPXEncoder = (*Route)(nil)
+var _ activity.GPXEncoder = (*Activity)(nil)
 
 func polylineToLineString(polylines ...string) (*geom.LineString, error) {
 	const N = 2

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGPXFromRoute(t *testing.T) {
+func TestGPXRoute(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
@@ -79,7 +79,7 @@ func TestGPXFromRoute(t *testing.T) {
 	}
 }
 
-func TestGPXFromActivity(t *testing.T) {
+func TestGPXActivity(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 

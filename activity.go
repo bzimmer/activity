@@ -7,12 +7,12 @@ import (
 
 const UserAgent = "github.com/bzimmer/activity"
 
-type GPXer interface {
+type GPXEncoder interface {
 	// GPX returns a GPX instance
 	GPX() (*gpx.GPX, error)
 }
 
-type GeoJSONer interface {
+type GeoJSONEncoder interface {
 	// GeoJSON returns a GeoJSON instance
-	GeoJSON() (*geojson.Feature, error)
+	GeoJSON() (*geojson.FeatureCollection, error)
 }

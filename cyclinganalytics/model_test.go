@@ -25,6 +25,7 @@ func TestModel(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			src := cyclinganalytics.Ride{
 				UTCDatetime: cyclinganalytics.Datetime{Time: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 			}

@@ -3,7 +3,9 @@ package cyclinganalytics_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -11,44 +13,117 @@ import (
 	"github.com/bzimmer/activity/cyclinganalytics"
 )
 
-func TestRides(t *testing.T) {
-	t.Parallel()
-	a := assert.New(t)
-	client, err := newClient(http.StatusOK, "me-rides.json")
-	a.NoError(err)
-	ctx := context.Background()
-	rides, err := client.Rides.Rides(ctx, cyclinganalytics.Me, activity.Pagination{})
-	a.NoError(err)
-	a.NotNil(rides)
-	a.Equal(2, len(rides))
-}
-
 func TestRide(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	client, err := newClient(http.StatusOK, "ride.json")
-	a.NoError(err)
-	ctx := context.Background()
-	opts := cyclinganalytics.RideOptions{
-		Streams: []string{"latitude", "longitude", "elevation"},
+
+	tests := []struct {
+		name string
+		err  string
+		user cyclinganalytics.UserID
+	}{
+		{
+			user: cyclinganalytics.Me,
+			name: "query recent feed",
+		},
+		{
+			user: cyclinganalytics.UserID(175334338355),
+			name: "query recent feed",
+		},
+		{
+			user: cyclinganalytics.UserID(882722),
+			name: "query recent feed",
+			err:  "Something went horribly wrong",
+		},
 	}
-	ride, err := client.Rides.Ride(ctx, 175334338355, opts)
-	a.NoError(err)
-	a.NotNil(ride)
-	a.NotNil(ride.Streams)
-	a.Equal(27154, len(ride.Streams.Elevation))
-	gears := ride.Streams.Gears
-	a.NotNil(gears)
-	a.Equal(813, len(gears.Shifts))
+
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			mux := http.NewServeMux()
+			mux.HandleFunc("/ride/0", func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, "testdata/ride.json")
+			})
+			mux.HandleFunc("/ride/175334338355", func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, "testdata/ride.json")
+			})
+			mux.HandleFunc("/ride/882722", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+				http.ServeFile(w, r, "testdata/error.json")
+			})
+
+			svr := httptest.NewServer(mux)
+			defer svr.Close()
+
+			opts := cyclinganalytics.WithRideOptions(cyclinganalytics.RideOptions{
+				Streams: []string{"latitude", "longitude", "elevation"},
+			})
+			client, err := cyclinganalytics.NewClient(
+				cyclinganalytics.WithBaseURL(svr.URL),
+				cyclinganalytics.WithHTTPTracing(false),
+				cyclinganalytics.WithTokenCredentials("fooKey", "barToken", time.Time{}))
+			a.NoError(err)
+			ride, err := client.Rides.Ride(context.Background(), tt.user, opts)
+			if tt.err != "" {
+				a.Error(err)
+				a.Nil(ride)
+				a.Contains(err.Error(), tt.err)
+				return
+			}
+			a.NoError(err)
+			a.NotNil(ride)
+			a.NotNil(ride.Streams)
+			a.Equal(27154, len(ride.Streams.Elevation))
+			gears := ride.Streams.Gears
+			a.NotNil(gears)
+			a.Equal(813, len(gears.Shifts))
+		})
+	}
 }
 
-func TestRideForbidden(t *testing.T) {
+func TestRides(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	client, err := newClient(http.StatusForbidden, "error.json")
-	a.NoError(err)
-	ctx := context.Background()
-	ride, err := client.Rides.Ride(ctx, 175334338355, cyclinganalytics.RideOptions{})
-	a.Error(err)
-	a.Nil(ride)
+
+	tests := []struct {
+		name string
+		user cyclinganalytics.UserID
+	}{
+		{
+			user: cyclinganalytics.Me,
+			name: "query rides for `me`",
+		},
+		{
+			user: cyclinganalytics.UserID(882782),
+			name: "query rides for user",
+		},
+	}
+
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			mux := http.NewServeMux()
+			mux.HandleFunc("/me/rides", func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, "testdata/me-rides.json")
+			})
+			mux.HandleFunc("/882782/rides", func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, "testdata/me-rides.json")
+			})
+
+			svr := httptest.NewServer(mux)
+			defer svr.Close()
+
+			client, err := cyclinganalytics.NewClient(
+				cyclinganalytics.WithBaseURL(svr.URL),
+				cyclinganalytics.WithHTTPTracing(false),
+				cyclinganalytics.WithTokenCredentials("fooKey", "barToken", time.Time{}))
+			a.NoError(err)
+			rides, err := client.Rides.Rides(context.Background(), tt.user, activity.Pagination{})
+			a.NoError(err)
+			a.NotNil(rides)
+			a.Len(rides, 2)
+		})
+	}
 }

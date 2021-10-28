@@ -10,7 +10,7 @@ import (
 	"github.com/bzimmer/activity/cyclinganalytics"
 )
 
-func TestRideToGPX(t *testing.T) {
+func TestRideGPX(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 	client, err := newClient(http.StatusOK, "ride.json")
@@ -19,7 +19,7 @@ func TestRideToGPX(t *testing.T) {
 	opts := cyclinganalytics.RideOptions{
 		Streams: []string{"latitude", "longitude", "elevation"},
 	}
-	ride, err := client.Rides.Ride(ctx, 175334338355, opts)
+	ride, err := client.Rides.Ride(ctx, 175334338355, cyclinganalytics.WithRideOptions(opts))
 	a.NoError(err)
 	a.NotNil(ride)
 	a.NotNil(ride.Streams)

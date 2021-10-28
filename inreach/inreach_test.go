@@ -43,7 +43,7 @@ func TestClient(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client, err := inreach.NewClient(
-				inreach.WithHTTPTracing(true),
+				inreach.WithHTTPTracing(false),
 				inreach.WithTransport(tt.tripper),
 				inreach.WithHTTPClient(tt.client))
 			if tt.err != "" {

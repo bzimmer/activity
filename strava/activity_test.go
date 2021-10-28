@@ -252,7 +252,7 @@ func TestActivityTimeout(t *testing.T) {
 
 	t.Run("timeout lt sleep => failure", func(t *testing.T) {
 		ctx := context.Background()
-		ctx, cancel := context.WithTimeout(ctx, time.Millisecond*15)
+		ctx, cancel := context.WithTimeout(ctx, time.Microsecond)
 		defer cancel()
 		act, err := client.Activity.Activity(ctx, 154504250376823)
 		a.Error(err)

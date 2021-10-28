@@ -16,6 +16,9 @@ import (
 
 const _baseURL = "https://www.cyclinganalytics.com/api"
 
+// APIOption for configuring API requests
+type APIOption func(url.Values) error
+
 // Client for accessing Cycling Analytics' API
 type Client struct {
 	config  oauth2.Config

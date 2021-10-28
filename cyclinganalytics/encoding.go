@@ -11,7 +11,7 @@ import (
 	"github.com/bzimmer/activity"
 )
 
-var _ activity.GPXer = (*Ride)(nil)
+var _ activity.GPXEncoder = (*Ride)(nil)
 
 func (r *Ride) GPX() (*gpx.GPX, error) {
 	var layout geom.Layout
