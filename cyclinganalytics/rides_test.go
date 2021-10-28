@@ -18,22 +18,22 @@ func TestRide(t *testing.T) {
 	a := assert.New(t)
 
 	tests := []struct {
-		name string
-		err  string
-		user cyclinganalytics.UserID
+		name   string
+		err    string
+		rideID int64
 	}{
 		{
-			user: cyclinganalytics.Me,
-			name: "query recent feed",
+			rideID: 22322,
+			name:   "query recent feed",
 		},
 		{
-			user: cyclinganalytics.UserID(175334338355),
-			name: "query recent feed",
+			rideID: 175334338355,
+			name:   "query recent feed",
 		},
 		{
-			user: cyclinganalytics.UserID(882722),
-			name: "query recent feed",
-			err:  "Something went horribly wrong",
+			rideID: 882722,
+			name:   "query recent feed",
+			err:    "Something went horribly wrong",
 		},
 	}
 
@@ -42,7 +42,7 @@ func TestRide(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			mux := http.NewServeMux()
-			mux.HandleFunc("/ride/0", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/ride/22322", func(w http.ResponseWriter, r *http.Request) {
 				http.ServeFile(w, r, "testdata/ride.json")
 			})
 			mux.HandleFunc("/ride/175334338355", func(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +64,7 @@ func TestRide(t *testing.T) {
 				cyclinganalytics.WithHTTPTracing(false),
 				cyclinganalytics.WithTokenCredentials("fooKey", "barToken", time.Time{}))
 			a.NoError(err)
-			ride, err := client.Rides.Ride(context.Background(), tt.user, opts)
+			ride, err := client.Rides.Ride(context.Background(), tt.rideID, opts)
 			if tt.err != "" {
 				a.Error(err)
 				a.Nil(ride)

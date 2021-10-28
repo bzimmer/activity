@@ -54,7 +54,7 @@ func WithRideOptions(r RideOptions) APIOption {
 }
 
 // Ride returns a single ride with available options
-func (s *RidesService) Ride(ctx context.Context, rideID UserID, opts ...APIOption) (*Ride, error) {
+func (s *RidesService) Ride(ctx context.Context, rideID int64, opts ...APIOption) (*Ride, error) {
 	uri := fmt.Sprintf("ride/%d", rideID)
 	v := url.Values{}
 	for i := range opts {
