@@ -512,31 +512,31 @@ func TestUpdate(t *testing.T) {
 			act := decoder(r)
 			a.NotNil(act.Name)
 			a.Nil(act.Description)
-			a.False(*act.Hidden)
+			a.False(*act.Muted)
 			http.ServeFile(w, r, "testdata/activity.json")
 		})
 		mux.HandleFunc("/activities/1002", func(w http.ResponseWriter, r *http.Request) {
 			a.Equal(http.MethodPut, r.Method)
 			act := decoder(r)
-			a.True(*act.Hidden)
+			a.True(*act.Muted)
 			http.ServeFile(w, r, "testdata/activity.json")
 		})
 		return mux
 	}
 
 	tests := []struct {
-		id     int64
-		name   string
-		hidden bool
+		id    int64
+		name  string
+		muted bool
 	}{
 		{
 			id:   1001,
 			name: "empty update",
 		},
 		{
-			id:     1002,
-			name:   "hide",
-			hidden: true,
+			id:    1002,
+			name:  "mute",
+			muted: true,
 		},
 	}
 
@@ -549,9 +549,9 @@ func TestUpdate(t *testing.T) {
 			client, err := newTestClient(strava.WithBaseURL(svr.URL))
 			a.NoError(err)
 			update := &strava.UpdatableActivity{
-				ID:     tt.id,
-				Name:   &tt.name,
-				Hidden: &tt.hidden,
+				ID:    tt.id,
+				Name:  &tt.name,
+				Muted: &tt.muted,
 			}
 			act, err := client.Activity.Update(context.Background(), update)
 			a.NoError(err)
