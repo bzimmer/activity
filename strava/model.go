@@ -357,7 +357,7 @@ type UpdatableActivity struct {
 	ID          int64   `json:"id"`
 	Commute     *bool   `json:"commute,omitempty"`
 	Trainer     *bool   `json:"trainer,omitempty"`
-	Hidden      *bool   `json:"hide_from_home,omitempty"`
+	Muted       *bool   `json:"hide_from_home,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Name        *string `json:"name,omitempty"`
 	SportType   *string `json:"sport_type,omitempty"`
@@ -372,7 +372,7 @@ type Activity struct {
 	UploadID                 int64                  `json:"upload_id"`
 	Athlete                  *Athlete               `json:"athlete"`
 	Name                     string                 `json:"name"`
-	Hidden                   bool                   `json:"hide_from_home"`
+	Muted                    bool                   `json:"hide_from_home"`
 	Distance                 unit.Length            `json:"distance" units:"m"`
 	MovingTime               unit.Duration          `json:"moving_time" units:"s"`
 	ElapsedTime              unit.Duration          `json:"elapsed_time" units:"s"`
