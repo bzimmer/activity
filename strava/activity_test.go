@@ -7,83 +7,199 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/bzimmer/httpwares"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/bzimmer/activity"
 	"github.com/bzimmer/activity/strava"
 )
 
-func readall(ctx context.Context, client *strava.Client, spec activity.Pagination, opts ...strava.APIOption) ([]*strava.Activity, error) {
-	var activities []*strava.Activity
-	err := strava.ActivitiesIter(
-		client.Activity.Activities(ctx, spec, opts...),
-		func(act *strava.Activity) (bool, error) {
-			activities = append(activities, act)
-			return true, nil
-		})
-	return activities, err
-}
-
 func TestActivity(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	client, err := newClient(http.StatusOK, "activity.json")
-	a.NoError(err)
-	ctx := context.Background()
-	act, err := client.Activity.Activity(ctx, 154504250376823)
-	a.NoError(err)
-	a.NotNil(act)
-	a.Equal(int64(154504250376823), act.ID)
+
+	for _, tt := range []struct {
+		name    string
+		timeout time.Duration
+		before  func(mux *http.ServeMux)
+		after   func(activity *strava.Activity, err error)
+	}{
+		{
+			name: "valid activity",
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/154504250376823", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/activity.json")
+				})
+			},
+			after: func(activity *strava.Activity, err error) {
+				a.NoError(err)
+				a.NotNil(activity)
+			},
+		},
+		{
+			name:    "timeout lt sleep => failure",
+			timeout: time.Millisecond,
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/154504250376823", func(w http.ResponseWriter, r *http.Request) {
+					time.Sleep(time.Millisecond * 15)
+					http.ServeFile(w, r, "testdata/activity.json")
+				})
+			},
+			after: func(activity *strava.Activity, err error) {
+				a.Error(err)
+				a.Nil(activity)
+			},
+		},
+		{
+			name:    "timeout gt sleep => success",
+			timeout: time.Millisecond * 120,
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/154504250376823", func(w http.ResponseWriter, r *http.Request) {
+					time.Sleep(time.Millisecond * 15)
+					http.ServeFile(w, r, "testdata/activity.json")
+				})
+			},
+			after: func(activity *strava.Activity, err error) {
+				a.NoError(err)
+				a.NotNil(activity)
+			},
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client, svr := newClient(tt.before)
+			defer svr.Close()
+			ctx := context.TODO()
+			if tt.timeout > 0 {
+				var cancel func()
+				ctx, cancel = context.WithTimeout(ctx, tt.timeout)
+				defer cancel()
+			}
+			tt.after(client.Activity.Activity(ctx, 154504250376823))
+		})
+	}
 }
 
 func TestActivities(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
-	ctx := context.Background()
-	client, err := strava.NewClient(
-		strava.WithTransport(&ManyTransport{
-			Filename: "testdata/activity.json",
-			Total:    2,
-		}),
-		strava.WithTokenCredentials("fooKey", "barToken", time.Time{}))
-	a.NoError(err)
+	all := func(res <-chan *strava.ActivityResult) []*strava.Activity {
+		var acts []*strava.Activity
+		a.NoError(strava.ActivitiesIter(res,
+			func(act *strava.Activity) (bool, error) {
+				acts = append(acts, act)
+				return true, nil
+			}))
+		return acts
+	}
 
-	acts, err := readall(ctx, client, activity.Pagination{})
-	a.NoError(err)
-	a.Equal(2, len(acts))
-}
-
-func TestActivitiesWithOptions(t *testing.T) {
-	t.Parallel()
-	a := assert.New(t)
-
-	for _, tt := range []struct {
-		name string
-		err  bool
-		opt  strava.APIOption
+	tests := []struct {
+		name       string
+		pagination activity.Pagination
+		opt        strava.APIOption
+		before     func(mux *http.ServeMux)
+		after      func(activities <-chan *strava.ActivityResult)
 	}{
 		{
-			name: "nil options",
-			opt:  nil,
-		},
-		{
-			name: "err options",
-			err:  true,
-			opt: func(url.Values) error {
-				return errors.New("error in option")
+			name:       "request two, get two",
+			pagination: activity.Pagination{Total: 2},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Total:    2,
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, 2)
 			},
 		},
 		{
-			name: "zero dates",
-			opt:  strava.WithDateRange(time.Time{}, time.Time{}),
+			name:       "fewer activities than requested",
+			pagination: activity.Pagination{Total: 325},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Total:    15,
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, 15)
+			},
+		},
+		{
+			name:       "total, start, and count",
+			pagination: activity.Pagination{Total: 127, Start: 0, Count: 1},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, 127)
+			},
+		},
+		{
+			name:       "total and start",
+			pagination: activity.Pagination{Total: 234, Start: 0},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, 234)
+			},
+		},
+		{
+			name:       "total and start less than PageSize",
+			pagination: activity.Pagination{Total: 27, Start: 0},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, 27)
+			},
+		},
+		{
+			name:       "exact PageSize",
+			pagination: activity.Pagination{Total: strava.PageSize, Count: strava.PageSize + 100},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, strava.PageSize)
+			},
+		},
+		{
+			name:       "zero dates",
+			opt:        strava.WithDateRange(time.Time{}, time.Time{}),
+			pagination: activity.Pagination{Total: 2},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Total:    2,
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, 2)
+			},
 		},
 		{
 			name: "before and after",
@@ -92,194 +208,117 @@ func TestActivitiesWithOptions(t *testing.T) {
 				after := before.Add(time.Hour * time.Duration(-24*7))
 				return strava.WithDateRange(before, after)
 			}(),
-		},
-	} {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			client, err := strava.NewClient(
-				strava.WithTransport(&ManyTransport{
-					Filename: "testdata/activity.json",
+			pagination: activity.Pagination{Total: 2},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
 					Total:    2,
-				}),
-				strava.WithTokenCredentials("fooKey", "barToken", time.Time{}))
-			a.NoError(err)
-			acts, err := readall(ctx, client, activity.Pagination{}, tt.opt)
-			if tt.err {
-				a.Error(err)
-			} else {
-				a.NoError(err)
-				a.Equal(2, len(acts))
-			}
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				acts := all(activities)
+				a.Len(acts, 2)
+			},
+		},
+		{
+			name: "error in option",
+			opt: func(url.Values) error {
+				return errors.New("error in option")
+			},
+			pagination: activity.Pagination{Total: 2},
+			before: func(mux *http.ServeMux) {
+				mux.Handle("/athlete/activities", &ManyHandler{
+					Total:    2,
+					Filename: "testdata/activity.json",
+				})
+			},
+			after: func(activities <-chan *strava.ActivityResult) {
+				res := <-activities
+				a.Error(res.Err)
+				a.Nil(res.Activity)
+				a.Contains(res.Err.Error(), "error in option")
+			},
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client, svr := newClient(tt.before)
+			defer svr.Close()
+			tt.after(client.Activity.Activities(context.TODO(), tt.pagination, tt.opt))
 		})
 	}
-}
-
-type F struct {
-	n int
-}
-
-func (f *F) X(res *http.Response) error {
-	if f.n == 1 {
-		// on the second iteration return an empty body signaling no more activities exist
-		res.ContentLength = int64(0)
-		res.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
-	}
-	f.n++
-	return nil
-}
-
-func TestActivitiesRequestedGTAvailable(t *testing.T) {
-	t.Parallel()
-	a := assert.New(t)
-
-	client, err := newClienter(http.StatusOK, "activities.json", nil, (&F{}).X)
-	a.NoError(err)
-	ctx := context.Background()
-	acts, err := readall(ctx, client, activity.Pagination{Total: 325})
-	a.NoError(err)
-	a.Equal(2, len(acts))
-}
-
-func TestActivitiesMany(t *testing.T) {
-	t.Parallel()
-	a := assert.New(t)
-
-	ctx := context.Background()
-	client, err := strava.NewClient(
-		strava.WithTransport(&ManyTransport{
-			Filename: "testdata/activity.json",
-		}),
-		strava.WithTokenCredentials("fooKey", "barToken", time.Time{}))
-	a.NoError(err)
-
-	t.Run("total, start, and count", func(t *testing.T) {
-		// success: the requested number of activities because count/pagesize == 1
-		acts, err := readall(ctx, client, activity.Pagination{Total: 127, Start: 0, Count: 1})
-		a.NoError(err)
-		a.NotNil(acts)
-		a.Equal(127, len(acts))
-	})
-
-	t.Run("total and start", func(t *testing.T) {
-		// success: the requested number of activities is exceeded because count/pagesize not specified
-		x := 234
-		acts, err := readall(ctx, client, activity.Pagination{Total: x, Start: 0})
-		a.NoError(err)
-		a.NotNil(acts)
-		a.Equal(x, len(acts))
-	})
-
-	t.Run("total and start less than PageSize", func(t *testing.T) {
-		// success: the requested number of activities because count/pagesize <= strava.PageSize
-		a.True(27 < strava.PageSize)
-		acts, err := readall(ctx, client, activity.Pagination{Total: 27, Start: 0})
-		a.NoError(err)
-		a.NotNil(acts)
-		a.Equal(27, len(acts))
-	})
-
-	t.Run("different Count values", func(t *testing.T) {
-		count := strava.PageSize + 100
-		for _, x := range []int{27, 350, strava.PageSize} {
-			acts, err := readall(ctx, client, activity.Pagination{Total: x, Start: 0, Count: count})
-			a.NoError(err)
-			a.NotNil(acts)
-			a.Equal(x, len(acts))
-		}
-	})
-
-	t.Run("negative total", func(t *testing.T) {
-		acts, err := readall(ctx, client, activity.Pagination{Total: -1})
-		a.Error(err)
-		a.Nil(acts)
-	})
 }
 
 func TestActivityStreams(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
-	t.Run("four", func(t *testing.T) {
-		ctx := context.Background()
-		client, err := newClient(http.StatusOK, "streams_four.json")
-		a.NoError(err)
-		sms, err := client.Activity.Streams(ctx, 154504250376, "latlng", "altitude", "distance")
-		a.NoError(err)
-		a.NotNil(sms)
-		a.NotNil(sms.LatLng)
-		a.NotNil(sms.Elevation)
-		a.NotNil(sms.Distance)
-	})
-
-	t.Run("two", func(t *testing.T) {
-		ctx := context.Background()
-		client, err := newClient(http.StatusOK, "streams_two.json")
-		a.NoError(err)
-		sms, err := client.Activity.Streams(ctx, 154504250376, "latlng", "altitude")
-		a.NoError(err)
-		a.NotNil(sms)
-		a.NotNil(sms.LatLng)
-		a.NotNil(sms.Elevation)
-	})
-
-	t.Run("invalid stream", func(t *testing.T) {
-		ctx := context.Background()
-		client, err := newClient(http.StatusOK, "streams_two.json")
-		a.NoError(err)
-		sms, err := client.Activity.Streams(ctx, 154504250376, "foo", "bar")
-		a.Error(err)
-		a.Nil(sms)
-		a.Contains(err.Error(), "invalid stream")
-	})
-}
-
-func TestActivityTimeout(t *testing.T) {
-	t.Parallel()
-	a := assert.New(t)
-
-	client, err := strava.NewClient(
-		strava.WithTokenCredentials("fooKey", "barToken", time.Time{}),
-		strava.WithTransport(&httpwares.SleepingTransport{
-			Duration: time.Millisecond * 30,
-			Transport: &httpwares.TestDataTransport{
-				Status:      http.StatusOK,
-				Filename:    "activity.json",
-				ContentType: "application/json",
-			}}))
-	a.NoError(err)
-	a.NotNil(client)
-
-	t.Run("timeout lt sleep => failure", func(t *testing.T) {
-		ctx := context.Background()
-		ctx, cancel := context.WithTimeout(ctx, time.Microsecond)
-		defer cancel()
-		act, err := client.Activity.Activity(ctx, 154504250376823)
-		a.Error(err)
-		a.Nil(act)
-	})
-
-	t.Run("timeout gt sleep => success", func(t *testing.T) {
-		ctx := context.Background()
-		ctx, cancel := context.WithTimeout(ctx, time.Millisecond*120)
-		defer cancel()
-		act, err := client.Activity.Activity(ctx, 154504250376823)
-		a.NoError(err)
-		a.NotNil(act)
-		a.Equal(int64(154504250376823), act.ID)
-	})
+	tests := []struct {
+		name    string
+		streams []string
+		before  func(mux *http.ServeMux)
+		after   func(streams *strava.Streams, err error)
+	}{
+		{
+			name:    "four",
+			streams: []string{"latlng", "altitude", "distance"},
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/8002/streams/latlng,altitude,distance", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/streams_four.json")
+				})
+			},
+			after: func(streams *strava.Streams, err error) {
+				a.NoError(err)
+				a.NotNil(streams)
+				a.NotNil(streams.LatLng)
+				a.NotNil(streams.Elevation)
+				a.NotNil(streams.Distance)
+			},
+		},
+		{
+			name:    "two",
+			streams: []string{"latlng", "altitude"},
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/8002/streams/latlng,altitude", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/streams_two.json")
+				})
+			},
+			after: func(streams *strava.Streams, err error) {
+				a.NoError(err)
+				a.NotNil(streams)
+				a.NotNil(streams.LatLng)
+				a.NotNil(streams.Elevation)
+			},
+		},
+		{
+			name:    "invalid",
+			streams: []string{"foo", "bar", "baz"},
+			before:  func(mux *http.ServeMux) {},
+			after: func(streams *strava.Streams, err error) {
+				a.Error(err)
+				a.Nil(streams)
+				a.Contains(err.Error(), "invalid stream")
+			},
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client, svr := newClient(tt.before)
+			defer svr.Close()
+			tt.after(client.Activity.Streams(context.TODO(), 8002, tt.streams...))
+		})
+	}
 }
 
 func TestStreamSets(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-
-	svr := httptest.NewServer(http.NewServeMux())
+	client, svr := newClient(func(_ *http.ServeMux) {})
 	defer svr.Close()
-
-	client, err := newTestClient(strava.WithBaseURL(svr.URL))
-	a.NoError(err)
-
 	s := client.Activity.StreamSets()
 	a.NotNil(s)
 	a.Equal(11, len(s))
@@ -288,15 +327,6 @@ func TestStreamSets(t *testing.T) {
 func TestPhotos(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-
-	newMux := func() *http.ServeMux {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/activities/6099369285/photos", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "testdata/photos.json")
-		})
-		return mux
-	}
-
 	tests := []struct {
 		id   int64
 		name string
@@ -311,12 +341,12 @@ func TestPhotos(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			svr := httptest.NewServer(newMux())
+			client, svr := newClient(func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/6099369285/photos", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/photos.json")
+				})
+			})
 			defer svr.Close()
-
-			client, err := newTestClient(strava.WithBaseURL(svr.URL))
-			a.NoError(err)
 			photos, err := client.Activity.Photos(context.Background(), tt.id, 2048)
 			a.NoError(err)
 			a.NotNil(photos)
@@ -327,29 +357,7 @@ func TestPhotos(t *testing.T) {
 func TestUpload(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-
-	newMux := func() *http.ServeMux {
-		up := &strava.Upload{
-			ID:         12345,
-			IDString:   "12345",
-			ExternalID: "",
-			Error:      "",
-			Status:     "ok",
-			ActivityID: 54321,
-		}
-		mux := http.NewServeMux()
-		mux.HandleFunc("/uploads", func(w http.ResponseWriter, r *http.Request) {
-			enc := json.NewEncoder(w)
-			a.NoError(enc.Encode(up))
-		})
-		mux.HandleFunc("/uploads/12345", func(w http.ResponseWriter, r *http.Request) {
-			enc := json.NewEncoder(w)
-			a.NoError(enc.Encode(up))
-		})
-		return mux
-	}
-
-	tests := []struct {
+	for _, tt := range []struct {
 		name string
 		err  bool
 		done bool
@@ -379,16 +387,29 @@ func TestUpload(t *testing.T) {
 				}(),
 			},
 		},
-	}
-
-	for i := range tests {
-		tt := tests[i]
+	} {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			svr := httptest.NewServer(newMux())
+			t.Parallel()
+			client, svr := newClient(func(mux *http.ServeMux) {
+				up := &strava.Upload{
+					ID:         12345,
+					IDString:   "12345",
+					ExternalID: "",
+					Error:      "",
+					Status:     "ok",
+					ActivityID: 54321,
+				}
+				mux.HandleFunc("/uploads", func(w http.ResponseWriter, r *http.Request) {
+					enc := json.NewEncoder(w)
+					a.NoError(enc.Encode(up))
+				})
+				mux.HandleFunc("/uploads/12345", func(w http.ResponseWriter, r *http.Request) {
+					enc := json.NewEncoder(w)
+					a.NoError(enc.Encode(up))
+				})
+			})
 			defer svr.Close()
-			client, err := newTestClient(strava.WithBaseURL(svr.URL))
-			a.NoError(err)
-
 			uploader := client.Uploader()
 			upload, err := uploader.Upload(context.Background(), tt.file)
 			if tt.err {
@@ -409,20 +430,9 @@ func TestUpload(t *testing.T) {
 }
 
 func TestExporter(t *testing.T) {
+	t.Parallel()
 	a := assert.New(t)
-
-	newMux := func() *http.ServeMux {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/activities/6099369285", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "testdata/activity.json")
-		})
-		mux.HandleFunc("/activities/6099369285/streams/", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "testdata/streams_export.json")
-		})
-		return mux
-	}
-
-	tests := []struct {
+	for _, tt := range []struct {
 		id   int64
 		name string
 	}{
@@ -430,18 +440,19 @@ func TestExporter(t *testing.T) {
 			id:   6099369285,
 			name: "export activity",
 		},
-	}
-
-	for i := range tests {
-		tt := tests[i]
+	} {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			svr := httptest.NewServer(newMux())
+			client, svr := newClient(func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/6099369285", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/activity.json")
+				})
+				mux.HandleFunc("/activities/6099369285/streams/", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/streams_export.json")
+				})
+			})
 			defer svr.Close()
-
-			client, err := newTestClient(strava.WithBaseURL(svr.URL))
-			a.NoError(err)
 			exporter := client.Exporter()
 			export, err := exporter.Export(context.Background(), tt.id)
 			a.NoError(err)
@@ -453,7 +464,7 @@ func TestExporter(t *testing.T) {
 func TestWithDateRange(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	tests := []struct {
+	for _, tt := range []struct {
 		name          string
 		before, after time.Time
 		length        int
@@ -474,10 +485,8 @@ func TestWithDateRange(t *testing.T) {
 			after:  time.Now().Add(-time.Hour),
 			length: 2,
 		},
-	}
-
-	for i := range tests {
-		tt := tests[i]
+	} {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			v := url.Values{}
@@ -505,26 +514,7 @@ func TestUpdate(t *testing.T) {
 		return &act
 	}
 
-	newMux := func() *http.ServeMux {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/activities/1001", func(w http.ResponseWriter, r *http.Request) {
-			a.Equal(http.MethodPut, r.Method)
-			act := decoder(r)
-			a.NotNil(act.Name)
-			a.Nil(act.Description)
-			a.False(*act.Hidden)
-			http.ServeFile(w, r, "testdata/activity.json")
-		})
-		mux.HandleFunc("/activities/1002", func(w http.ResponseWriter, r *http.Request) {
-			a.Equal(http.MethodPut, r.Method)
-			act := decoder(r)
-			a.True(*act.Hidden)
-			http.ServeFile(w, r, "testdata/activity.json")
-		})
-		return mux
-	}
-
-	tests := []struct {
+	for _, tt := range []struct {
 		id     int64
 		name   string
 		hidden bool
@@ -538,16 +528,27 @@ func TestUpdate(t *testing.T) {
 			name:   "hide",
 			hidden: true,
 		},
-	}
-
-	for i := range tests {
-		tt := tests[i]
+	} {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svr := httptest.NewServer(newMux())
+			client, svr := newClient(func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/1001", func(w http.ResponseWriter, r *http.Request) {
+					a.Equal(http.MethodPut, r.Method)
+					act := decoder(r)
+					a.NotNil(act.Name)
+					a.Nil(act.Description)
+					a.False(*act.Hidden)
+					http.ServeFile(w, r, "testdata/activity.json")
+				})
+				mux.HandleFunc("/activities/1002", func(w http.ResponseWriter, r *http.Request) {
+					a.Equal(http.MethodPut, r.Method)
+					act := decoder(r)
+					a.True(*act.Hidden)
+					http.ServeFile(w, r, "testdata/activity.json")
+				})
+			})
 			defer svr.Close()
-			client, err := newTestClient(strava.WithBaseURL(svr.URL))
-			a.NoError(err)
 			update := &strava.UpdatableActivity{
 				ID:     tt.id,
 				Name:   &tt.name,

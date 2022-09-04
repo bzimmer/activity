@@ -4,24 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/bzimmer/activity/strava"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGPXRoute(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-
-	newMux := func() *http.ServeMux {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/routes/26587226", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "testdata/route.json")
-		})
-		return mux
-	}
 
 	tests := []struct {
 		id          int64
@@ -50,12 +40,12 @@ func TestGPXRoute(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			svr := httptest.NewServer(newMux())
+			client, svr := newClient(func(mux *http.ServeMux) {
+				mux.HandleFunc("/routes/26587226", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/route.json")
+				})
+			})
 			defer svr.Close()
-
-			client, err := newTestClient(strava.WithBaseURL(svr.URL))
-			a.NoError(err)
 			rte, err := client.Route.Route(context.Background(), tt.id)
 			a.NoError(err)
 			a.NotNil(rte)
@@ -83,8 +73,7 @@ func TestGPXActivity(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
-	newMux := func() *http.ServeMux {
-		mux := http.NewServeMux()
+	before := func(mux *http.ServeMux) {
 		mux.HandleFunc("/activities/12345", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, "testdata/activity.json")
 		})
@@ -94,7 +83,6 @@ func TestGPXActivity(t *testing.T) {
 		mux.HandleFunc("/activities/66282823/streams/latlng,altitude,time", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, "testdata/streams.json")
 		})
-		return mux
 	}
 
 	tests := []struct {
@@ -133,12 +121,8 @@ func TestGPXActivity(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			svr := httptest.NewServer(newMux())
+			client, svr := newClient(before)
 			defer svr.Close()
-
-			client, err := newTestClient(strava.WithBaseURL(svr.URL))
-			a.NoError(err)
 			act, err := client.Activity.Activity(context.Background(), tt.id, tt.streams...)
 			a.NoError(err)
 			a.NotNil(act)

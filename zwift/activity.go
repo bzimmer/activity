@@ -3,6 +3,7 @@ package zwift
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -62,9 +63,10 @@ func (s *ActivityService) Activity(ctx context.Context, athleteID int64, activit
 	}
 	var act *Activity
 	if err = s.client.do(req, &act); err != nil {
-		if x, ok := err.(*Fault); ok {
-			if x.Message == "" {
-				x.Message = "Zwift does not use JSON errors, enable http tracing for more details"
+		var fault *Fault
+		if errors.As(err, &fault) {
+			if fault.Message == "" {
+				fault.Message = "Zwift does not use JSON errors, enable http tracing for more details"
 			}
 		}
 		return nil, err

@@ -1,87 +1,77 @@
 package strava_test
 
 import (
-	"bytes"
-	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/bzimmer/activity/strava"
-	"github.com/bzimmer/httpwares"
 )
 
-func newTestClient(opts ...strava.Option) (*strava.Client, error) {
-	o := []strava.Option{
+func newClient(before func(*http.ServeMux), opts ...strava.Option) (*strava.Client, *httptest.Server) {
+	mux := http.NewServeMux()
+	before(mux)
+	svr := httptest.NewServer(mux)
+	options := []strava.Option{
+		strava.WithBaseURL(svr.URL),
 		strava.WithHTTPTracing(false),
-		strava.WithTokenCredentials("fooKey", "barToken", time.Time{}),
+		strava.WithTokenCredentials("key", "token", time.Time{}),
 	}
-	return strava.NewClient(append(o, opts...)...)
+	client, err := strava.NewClient(append(options, opts...)...)
+	if err != nil {
+		panic(err)
+	}
+	return client, svr
 }
 
-func newClient(status int, filename string) (*strava.Client, error) {
-	return newClienter(status, filename, nil, nil)
-}
-
-func newClienter(status int, filename string, requester httpwares.Requester, responder httpwares.Responder) (*strava.Client, error) {
-	return strava.NewClient(
-		strava.WithTransport(&httpwares.TestDataTransport{
-			Status:      status,
-			Filename:    filename,
-			ContentType: "application/json",
-			Requester:   requester,
-			Responder:   responder}),
-		strava.WithHTTPTracing(false),
-		strava.WithTokenCredentials("fooKey", "barToken", time.Time{}))
-}
-
-type ManyTransport struct {
+type ManyHandler struct {
 	Filename string
 	Total    int
 	total    int
 }
 
-func (t *ManyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	q := req.URL.Query()
+func (m *ManyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
 	n, err := strconv.Atoi(q.Get("per_page"))
 	if err != nil {
-		return nil, err
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	if t.Total > 0 {
-		n = t.Total
-		if t.total >= t.Total {
+	if m.Total > 0 {
+		n = m.Total
+		if m.total >= m.Total {
 			n = 0
 		}
 	}
-	t.total = t.total + n
+	m.total += n
 
-	data, err := os.ReadFile(t.Filename)
+	w.WriteHeader(http.StatusOK)
+	data, err := os.ReadFile(m.Filename)
 	if err != nil {
-		return nil, err
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	var body bytes.Buffer
-	if err := body.WriteByte(byte('[')); err != nil {
-		return nil, err
+	if _, err = w.Write([]byte("[")); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	for i := 0; i < n; i++ {
-		if _, err := body.Write(data); err != nil {
-			return nil, err
+		if _, err = w.Write(data); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		if i+1 < n {
-			if err := body.WriteByte(','); err != nil {
-				return nil, err
+			if _, err = w.Write([]byte(",")); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		}
 	}
-	if err := body.WriteByte(byte(']')); err != nil {
-		return nil, err
+	if _, err = w.Write([]byte("]")); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-
-	return &http.Response{
-		StatusCode: http.StatusOK,
-		Body:       io.NopCloser(&body),
-		Header:     make(http.Header),
-	}, nil
 }

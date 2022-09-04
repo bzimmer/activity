@@ -102,6 +102,7 @@ func TestPaginate(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := activity.Paginate(context.Background(), tt.paginator, tt.pagination)
 			if tt.err != "" {
 				a.Error(err)

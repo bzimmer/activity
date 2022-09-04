@@ -16,9 +16,8 @@ var _ activity.GPXEncoder = (*Route)(nil)
 var _ activity.GPXEncoder = (*Activity)(nil)
 
 func polylineToLineString(polylines ...string) (*geom.LineString, error) {
-	const N = 2
+	const n = 2
 	var coords []float64
-	var linestring *geom.LineString
 	for _, p := range polylines {
 		if p == "" {
 			continue
@@ -27,18 +26,15 @@ func polylineToLineString(polylines ...string) (*geom.LineString, error) {
 		if err != nil {
 			return nil, err
 		}
-		coords = make([]float64, len(c)*N)
+		coords = make([]float64, len(c)*n)
 		for i := 0; i < len(c); i++ {
-			x := N * i
+			x := n * i
 			coords[x+0] = c[i][1]
 			coords[x+1] = c[i][0]
 		}
 		return geom.NewLineStringFlat(geom.XY, coords), nil
 	}
-	if linestring == nil {
-		return nil, errors.New("no valid polyline")
-	}
-	return linestring, nil
+	return nil, errors.New("no valid polyline")
 }
 
 // GPX representation of an activity

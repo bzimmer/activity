@@ -141,7 +141,7 @@ func (s *ActivityService) Activity(ctx context.Context, activityID int64, stream
 			return err
 		})
 	}
-	if err := grp.Wait(); err != nil {
+	if err = grp.Wait(); err != nil {
 		return nil, err
 	}
 	act.Streams = sms
@@ -300,7 +300,7 @@ func (s *ActivityService) Export(ctx context.Context, activityID int64) (*activi
 		return nil, err
 	}
 	var buf bytes.Buffer
-	if err := x.Write(&buf); err != nil {
+	if err = x.Write(&buf); err != nil {
 		return nil, err
 	}
 	name := strings.Join(fileNameRE.FindAllString(act.Name, -1), "_")

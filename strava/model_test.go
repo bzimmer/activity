@@ -1,8 +1,9 @@
-package strava
+package strava_test
 
 import (
 	"testing"
 
+	"github.com/bzimmer/activity/strava"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -11,7 +12,7 @@ func TestFault(t *testing.T) {
 	a := assert.New(t)
 
 	f := func() error {
-		return &Fault{Message: "foo"}
+		return &strava.Fault{Message: "foo"}
 	}
 	err := f()
 	a.Error(err)

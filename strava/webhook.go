@@ -130,14 +130,14 @@ func webhookEventHandler(subscriber WebhookSubscriber) http.HandlerFunc {
 			return
 		}
 		if subscriber != nil {
-			err := subscriber.MessageReceived(m)
+			err = subscriber.MessageReceived(m)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		if err = json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}

@@ -35,6 +35,7 @@ func TestRefresh(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			client, svr := newClient(t, mux)
 			defer svr.Close()
 			token, err := client.Auth.Refresh(context.Background(), "foo", "bar")

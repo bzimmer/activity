@@ -44,6 +44,7 @@ func TestProfile(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			client, svr := newClient(t, mux)
 			defer svr.Close()
 			profile, err := client.Profile.Profile(context.Background(), tt.user)

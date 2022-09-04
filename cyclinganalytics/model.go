@@ -7,7 +7,7 @@ import (
 )
 
 // Fault represents an error response
-type Fault struct {
+type Fault struct { //nolint:errname
 	Code    int    `json:"code"`
 	Message string `json:"error"`
 }
@@ -31,13 +31,13 @@ const (
 	datetimeFormat = `"2006-01-02T15:04:05"`
 )
 
-func (d *Datetime) UnmarshalJSON(b []byte) (err error) {
+func (d *Datetime) UnmarshalJSON(b []byte) error {
 	t, err := time.Parse(datetimeFormat, string(b))
 	if err != nil {
-		return
+		return err
 	}
 	d.Time = t
-	return
+	return nil
 }
 
 func (d Datetime) MarshalJSON() ([]byte, error) {
