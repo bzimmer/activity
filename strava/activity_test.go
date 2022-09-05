@@ -45,12 +45,17 @@ func TestActivity(t *testing.T) {
 			timeout: time.Millisecond,
 			before: func(mux *http.ServeMux) {
 				mux.HandleFunc("/activities/154504250376823", func(w http.ResponseWriter, r *http.Request) {
-					time.Sleep(time.Millisecond * 15)
-					http.ServeFile(w, r, "testdata/activity.json")
+					select {
+					case <-r.Context().Done():
+						w.WriteHeader(http.StatusInternalServerError)
+					case <-time.After(15 * time.Millisecond):
+						http.ServeFile(w, r, "testdata/activity.json")
+					}
 				})
 			},
 			after: func(activity *strava.Activity, err error) {
 				a.Error(err)
+				a.Contains(err.Error(), "context deadline exceeded")
 				a.Nil(activity)
 			},
 		},
@@ -59,8 +64,12 @@ func TestActivity(t *testing.T) {
 			timeout: time.Millisecond * 120,
 			before: func(mux *http.ServeMux) {
 				mux.HandleFunc("/activities/154504250376823", func(w http.ResponseWriter, r *http.Request) {
-					time.Sleep(time.Millisecond * 15)
-					http.ServeFile(w, r, "testdata/activity.json")
+					select {
+					case <-r.Context().Done():
+						w.WriteHeader(http.StatusInternalServerError)
+					case <-time.After(15 * time.Millisecond):
+						http.ServeFile(w, r, "testdata/activity.json")
+					}
 				})
 			},
 			after: func(activity *strava.Activity, err error) {
