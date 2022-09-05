@@ -49,7 +49,7 @@ func TestAthlete(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			client, svr := newClientMux(tt.before)
+			client, svr := newClient(tt.before)
 			defer svr.Close()
 			athlete, err := client.Users.AuthenticatedUser(context.TODO())
 			tt.after(athlete, err)
