@@ -113,28 +113,3 @@ func TestRoute(t *testing.T) {
 		})
 	}
 }
-
-// func TestRoute(t *testing.T) {
-// 	t.Parallel()
-// 	a := assert.New(t)
-
-// 	c, err := newClient(http.StatusOK, "rwgps_route_141014.json")
-// 	a.NoError(err)
-// 	a.NotNil(c)
-
-// 	ctx := context.Background()
-// 	rte, err := c.Trips.Route(ctx, 141014)
-// 	a.NoError(err)
-// 	a.NotNil(rte)
-// 	a.Equal(1154, len(rte.TrackPoints))
-// 	a.Equal(int64(141014), rte.ID)
-// 	a.Equal(rwgps.TypeRoute.String(), rte.Type)
-
-// 	gpx, err := rte.GPX()
-// 	a.NoError(err)
-// 	a.NotNil(gpx)
-
-// 	rte, err = c.Trips.Route(contextNil(), 141014)
-// 	a.Error(err)
-// 	a.Nil(rte)
-// }
