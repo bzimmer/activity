@@ -4,11 +4,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"time"
 
 	"github.com/bzimmer/activity/rwgps"
 	"github.com/bzimmer/httpwares"
 )
+
+func newClientMux(before func(*http.ServeMux), opts ...rwgps.Option) (*rwgps.Client, *httptest.Server) {
+	mux := http.NewServeMux()
+	before(mux)
+	svr := httptest.NewServer(mux)
+	options := []rwgps.Option{
+		rwgps.WithBaseURL(svr.URL),
+		rwgps.WithHTTPTracing(false),
+		rwgps.WithClientCredentials("fooKey", ""),
+		rwgps.WithTokenCredentials("barToken", "", time.Time{}),
+	}
+	client, err := rwgps.NewClient(append(options, opts...)...)
+	if err != nil {
+		panic(err)
+	}
+	return client, svr
+}
 
 func newClient(status int, filename string) (*rwgps.Client, error) {
 	return rwgps.NewClient(
