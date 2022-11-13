@@ -4,40 +4,12 @@ import (
 	"strconv"
 
 	"github.com/twpayne/go-geom"
-	"github.com/twpayne/go-geom/encoding/geojson"
 	"github.com/twpayne/go-gpx"
 
 	"github.com/bzimmer/activity"
 )
 
 var _ activity.GPXEncoder = (*Trip)(nil)
-var _ activity.GeoJSONEncoder = (*Trip)(nil)
-
-func (t *Trip) GeoJSON() (*geojson.FeatureCollection, error) {
-	layout := geom.XYZ
-	dim, n := layout.Stride(), len(t.TrackPoints)
-	coords := make([]float64, dim*n)
-	for i, tp := range t.TrackPoints {
-		x := dim * i
-		coords[x+0] = tp.Longitude
-		coords[x+1] = tp.Latitude
-		coords[x+2] = tp.Elevation.Meters()
-	}
-	// @todo add streams
-	return &geojson.FeatureCollection{
-		Features: []*geojson.Feature{
-			{
-				ID:       strconv.FormatInt(t.ID, 10),
-				Geometry: geom.NewLineStringFlat(layout, coords),
-				Properties: map[string]interface{}{
-					"type":   t.Type,
-					"name":   t.Name,
-					"source": _baseURL,
-				},
-			},
-		},
-	}, nil
-}
 
 func (t *Trip) GPX() (*gpx.GPX, error) {
 	var layout geom.Layout

@@ -37,12 +37,6 @@ func TestTripEncoding(t *testing.T) {
 				a.NoError(err)
 				a.NotNil(gpx)
 				a.Equal(1465, len(gpx.Trk[0].TrkSeg[0].TrkPt))
-
-				fc, err := trip.GeoJSON()
-				a.NoError(err)
-				a.NotNil(fc)
-				a.Len(fc.Features, 1)
-				a.Len(fc.Features[0].Geometry.FlatCoords(), 1465*3)
 			},
 		},
 	}
