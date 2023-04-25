@@ -30,11 +30,11 @@ type uploader struct {
 	status, statuscnt int
 }
 
-func (u *uploader) Upload(ctx context.Context, file *activity.File) (activity.Upload, error) {
+func (u *uploader) Upload(_ context.Context, _ *activity.File) (activity.Upload, error) {
 	return &upload{}, nil
 }
 
-func (u *uploader) Status(ctx context.Context, id activity.UploadID) (activity.Upload, error) {
+func (u *uploader) Status(_ context.Context, _ activity.UploadID) (activity.Upload, error) {
 	defer func() { u.statuscnt++ }()
 	if u.err {
 		return nil, errors.New("uploader error")

@@ -17,7 +17,7 @@ type Error struct {
 }
 
 // Fault contains errors
-type Fault struct { //nolint:errname
+type Fault struct { //nolint:errname // convention
 	Code    int      `json:"code"`
 	Message string   `json:"message"`
 	Errors  []*Error `json:"errors"`

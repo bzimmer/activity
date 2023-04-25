@@ -6,22 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bzimmer/httpwares"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"
 
 	"github.com/bzimmer/activity/cyclinganalytics"
 )
-
-func newClient(status int, filename string) (*cyclinganalytics.Client, error) {
-	return cyclinganalytics.NewClient(
-		cyclinganalytics.WithTransport(&httpwares.TestDataTransport{
-			Status:      status,
-			Filename:    filename,
-			ContentType: "application/json"}),
-		cyclinganalytics.WithTokenCredentials("fooKey", "barToken", time.Time{}))
-}
 
 func TestWith(t *testing.T) {
 	t.Parallel()

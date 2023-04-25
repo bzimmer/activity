@@ -27,7 +27,7 @@ const (
 )
 
 // Fault is an error
-type Fault struct { //nolint:errname
+type Fault struct { //nolint:errname // convention
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }

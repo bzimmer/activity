@@ -150,7 +150,8 @@ func (s *ActivityService) Activity(ctx context.Context, activityID int64, stream
 }
 
 // Activities returns a channel for activities and errors for an athlete
-func (s *ActivityService) Activities(ctx context.Context, spec activity.Pagination, opts ...APIOption) <-chan *ActivityResult {
+func (s *ActivityService) Activities(
+	ctx context.Context, spec activity.Pagination, opts ...APIOption) <-chan *ActivityResult {
 	acts := make(chan *ActivityResult, PageSize)
 	go func() {
 		defer close(acts)

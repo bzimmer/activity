@@ -75,7 +75,8 @@ func (s *ActivityService) Activity(ctx context.Context, athleteID int64, activit
 }
 
 // Activities returns a slice of activities for the user
-func (s *ActivityService) Activities(ctx context.Context, athleteID int64, spec activity.Pagination) ([]*Activity, error) {
+func (s *ActivityService) Activities(
+	ctx context.Context, athleteID int64, spec activity.Pagination) ([]*Activity, error) {
 	p := &paginator{service: *s, athleteID: athleteID, activities: make([]*Activity, 0)}
 	err := activity.Paginate(ctx, p, spec)
 	if err != nil {

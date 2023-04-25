@@ -27,7 +27,7 @@ func (p *paginator) Count() int {
 	return p.total
 }
 
-func (p *paginator) Do(ctx context.Context, spec activity.Pagination) (int, error) {
+func (p *paginator) Do(_ context.Context, _ activity.Pagination) (int, error) {
 	if p.err {
 		return 0, errors.New("error in paginator.do")
 	}

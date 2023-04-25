@@ -59,7 +59,8 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
-func (c *Client) newAPIRequest(ctx context.Context, method, uri string, values *url.Values, body io.Reader) (*http.Request, error) {
+func (c *Client) newAPIRequest(
+	ctx context.Context, method, uri string, values *url.Values, body io.Reader) (*http.Request, error) {
 	if c.token.AccessToken == "" {
 		return nil, errors.New("accessToken required")
 	}

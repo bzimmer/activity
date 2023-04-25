@@ -97,7 +97,8 @@ func (c *Client) newAPIRequest(ctx context.Context, method, uri string, body io.
 	return req, nil
 }
 
-func (c *Client) newWebhookRequest(ctx context.Context, method, uri string, body map[string]string) (*http.Request, error) {
+func (c *Client) newWebhookRequest(
+	ctx context.Context, method, uri string, body map[string]string) (*http.Request, error) {
 	u, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, uri))
 	if err != nil {
 		return nil, err

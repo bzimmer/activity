@@ -90,8 +90,8 @@ func TestTokenRefresh(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			tokens := make(chan int, 1)
-			profiles := make(chan int, tt.iterations)
+			tokens := make(chan int)
+			profiles := make(chan int)
 
 			svr := httptest.NewServer(tokenMux(t, tokens, profiles))
 			defer svr.Close()

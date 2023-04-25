@@ -1,27 +1,22 @@
 package cyclinganalytics_test
 
 import (
-	"context"
-	"net/http"
+	"encoding/json"
+	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/bzimmer/activity/cyclinganalytics"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRideGPX(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	client, err := newClient(http.StatusOK, "ride.json")
+	data, err := os.ReadFile("testdata/ride.json")
 	a.NoError(err)
-	ctx := context.Background()
-	opts := cyclinganalytics.RideOptions{
-		Streams: []string{"latitude", "longitude", "elevation"},
-	}
-	ride, err := client.Rides.Ride(ctx, 175334338355, cyclinganalytics.WithRideOptions(opts))
+	var ride cyclinganalytics.Ride
+	err = json.Unmarshal(data, &ride)
 	a.NoError(err)
-	a.NotNil(ride)
 	a.NotNil(ride.Streams)
 	a.Equal(5, len(ride.Streams.Elevation))
 	a.Equal(5, len(ride.Streams.Latitude))

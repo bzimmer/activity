@@ -215,7 +215,8 @@ func TestWebhookSubscriptionHandler(t *testing.T) {
 	sub, router := setupTestRouter()
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(context.TODO(), http.MethodGet, "/webhook?hub.verify_token=bar&hub.challenge=baz", nil)
+	req, _ := http.NewRequestWithContext(
+		context.TODO(), http.MethodGet, "/webhook?hub.verify_token=bar&hub.challenge=baz", nil)
 	router.ServeHTTP(w, req)
 
 	a.Equal(200, w.Code)
@@ -225,7 +226,8 @@ func TestWebhookSubscriptionHandler(t *testing.T) {
 
 	sub.fail = true
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(context.TODO(), http.MethodGet, "/webhook?hub.verify_token=bar&hub.challenge=baz", nil)
+	req, _ = http.NewRequestWithContext(
+		context.TODO(), http.MethodGet, "/webhook?hub.verify_token=bar&hub.challenge=baz", nil)
 	router.ServeHTTP(w, req)
 
 	a.Equal(500, w.Code)

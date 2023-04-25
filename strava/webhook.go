@@ -50,7 +50,8 @@ type WebhookSubscriber interface {
 }
 
 // Subscribe to a webhook
-func (s *WebhookService) Subscribe(ctx context.Context, callbackURL, verifyToken string) (*WebhookAcknowledgement, error) {
+func (s *WebhookService) Subscribe(
+	ctx context.Context, callbackURL, verifyToken string) (*WebhookAcknowledgement, error) {
 	uri := "push_subscriptions"
 	req, err := s.client.newWebhookRequest(ctx, http.MethodPost, uri,
 		map[string]string{"callback_url": callbackURL, "verify_token": verifyToken})
