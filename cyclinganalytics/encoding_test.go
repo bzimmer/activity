@@ -5,8 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bzimmer/activity/cyclinganalytics"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bzimmer/activity/cyclinganalytics"
 )
 
 func TestRideGPX(t *testing.T) {

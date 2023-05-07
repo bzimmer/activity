@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bzimmer/activity"
 	"golang.org/x/oauth2"
+
+	"github.com/bzimmer/activity"
 )
 
 //go:generate genwith --do --client --token --ratelimit --config --endpoint-func --package zwift
