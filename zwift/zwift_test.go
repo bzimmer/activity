@@ -55,11 +55,16 @@ func TestTokenRefresh(t *testing.T) {
 	tests := []struct {
 		name               string
 		username, password string
+		err                string
 	}{
 		{
 			name:     "success",
 			username: "foo-user",
 			password: "bar-pass",
+		},
+		{
+			name: "failure",
+			err:  "accessToken required",
 		},
 	}
 	for _, tt := range tests {
@@ -72,16 +77,8 @@ func TestTokenRefresh(t *testing.T) {
 			endpoint.AuthURL = svr.URL + "/auth"
 			endpoint.TokenURL = svr.URL + "/token"
 
-			var opt zwift.Option
-			switch {
-			case tt.username != "" && tt.password != "":
-				opt = zwift.WithTokenRefresh(tt.username, tt.password)
-			default:
-				opt = zwift.WithTokenCredentials("foo", "bar", time.Now().Add(time.Hour*24))
-			}
-
 			client, err := zwift.NewClient(
-				opt,
+				zwift.WithTokenRefresh(tt.username, tt.password),
 				zwift.WithBaseURL(svr.URL),
 				zwift.WithConfig(oauth2.Config{Endpoint: endpoint}),
 			)
@@ -90,9 +87,16 @@ func TestTokenRefresh(t *testing.T) {
 
 			ctx := context.Background()
 			profile, err := client.Profile.Profile(ctx, "abcxyz")
-			a.NoError(err)
-			a.NotNil(profile)
-			a.Equal("barney", profile.FirstName)
+			switch {
+			case tt.err != "":
+				a.Nil(profile)
+				a.Error(err)
+				a.Equal(tt.err, err.Error())
+			default:
+				a.NoError(err)
+				a.NotNil(profile)
+				a.Equal("barney", profile.FirstName)
+			}
 		})
 	}
 }
