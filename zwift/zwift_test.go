@@ -14,7 +14,7 @@ import (
 	"github.com/bzimmer/activity/zwift"
 )
 
-func newClient(t *testing.T, mux *http.ServeMux) (*zwift.Client, *httptest.Server) {
+func newClient(t *testing.T, mux *http.ServeMux, opts ...zwift.Option) (*zwift.Client, *httptest.Server) {
 	a := assert.New(t)
 	svr := httptest.NewServer(mux)
 
@@ -23,10 +23,15 @@ func newClient(t *testing.T, mux *http.ServeMux) (*zwift.Client, *httptest.Serve
 	endpoint.TokenURL = svr.URL + "/token"
 
 	client, err := zwift.NewClient(
-		zwift.WithBaseURL(svr.URL),
-		zwift.WithConfig(oauth2.Config{Endpoint: endpoint}),
-		zwift.WithTokenCredentials("foo", "bar", time.Now().Add(time.Hour*24)),
-		zwift.WithClientCredentials("what", "now?"))
+		append(
+			[]zwift.Option{
+				zwift.WithBaseURL(svr.URL),
+				zwift.WithConfig(oauth2.Config{Endpoint: endpoint}),
+				zwift.WithTokenCredentials("foo", "bar", time.Now().Add(time.Hour*24)),
+				zwift.WithClientCredentials("what", "now?"),
+			},
+			opts...,
+		)...)
 	a.NoError(err)
 	a.NotNil(client)
 	return client, svr
