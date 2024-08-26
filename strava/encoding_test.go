@@ -58,6 +58,7 @@ func TestGPXRoute(t *testing.T) {
 			case false:
 				a.NoError(err)
 				a.NotNil(gpx)
+				a.Equal("1.1", gpx.Version)
 				a.Equal(tt.tracks, len(gpx.Trk))
 				a.Equal(tt.routes, len(gpx.Rte))
 				a.Equal(tt.routepoints, len(gpx.Rte[0].RtePt))
@@ -135,6 +136,7 @@ func TestGPXActivity(t *testing.T) {
 			case false:
 				a.NoError(err)
 				a.NotNil(gpx)
+				a.Equal("1.1", gpx.Version)
 				a.Equal(tt.tracks, len(gpx.Trk))
 				a.Equal(tt.trackpoints, len(gpx.Trk[0].TrkSeg[0].TrkPt))
 				a.Equal(tt.routes, len(gpx.Rte))
