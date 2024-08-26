@@ -58,7 +58,8 @@ func (a *Activity) GPX() (*gpx.GPX, error) {
 			},
 		}
 		x := &gpx.GPX{
-			Trk: []*gpx.TrkType{trk},
+			Version: "1.1",
+			Trk:     []*gpx.TrkType{trk},
 		}
 		return x, nil
 	}
@@ -80,7 +81,8 @@ func (r *Route) GPX() (*gpx.GPX, error) {
 		},
 	}
 	x := &gpx.GPX{
-		Rte: []*gpx.RteType{rte},
+		Version: "1.1",
+		Rte:     []*gpx.RteType{rte},
 	}
 	return x, nil
 }
@@ -104,6 +106,7 @@ func (a *Activity) toGPXFromStreams() (*gpx.GPX, error) {
 		}
 	}
 	x := &gpx.GPX{
+		Version: "1.1",
 		Trk: []*gpx.TrkType{
 			{
 				Name: a.Name,
