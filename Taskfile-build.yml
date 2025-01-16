@@ -99,18 +99,6 @@ tasks:
     cmds:
       - goimports -w -local "{{.module}}/" .
 
-  docs:build:
-    desc: Statically generate the documentation
-    deps: [dist]
-    cmds:
-      - "{{.ROOT_DIR}}/env/bin/mkdocs build"
-
-  docs:serve:
-    desc: Serve the documentation
-    deps: [docs:generate]
-    cmds:
-      - "{{.ROOT_DIR}}/env/bin/mkdocs serve"
-
   gitleaks:
     desc: Run gitleaks
     deps: [dist]
