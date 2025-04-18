@@ -31,7 +31,7 @@ func (d *Datetime) UnmarshalJSON(b []byte) error {
 }
 
 func (d Datetime) MarshalJSON() ([]byte, error) {
-	return []byte(d.Time.Format(datetimeFormat)), nil
+	return []byte(d.Format(datetimeFormat)), nil
 }
 
 type Privacy struct {
