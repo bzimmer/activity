@@ -40,7 +40,7 @@ func (f *Fault) Error() string {
 type User struct {
 	ID        UserID `json:"id"`
 	Name      string `json:"name"`
-	AuthToken string `json:"auth_token"` //nolint:gosec -- Field unmarshals API token, not a hardcoded credential
+	AuthToken string `json:"auth_token"` //nolint:gosec // field unmarshals API token, not a hardcoded credential
 }
 
 type Summary struct {
