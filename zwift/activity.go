@@ -113,7 +113,7 @@ func (s *ActivityService) ExportActivity(ctx context.Context, act *Activity) (*a
 	if err != nil {
 		return nil, err
 	}
-	// #nosec G704 -- URL has been validated to ensure it's a legitimate Zwift S3 bucket
+	//nolint:gosec // G704 -- URL has been validated to ensure it's a legitimate Zwift S3 bucket
 	res, err := s.client.client.Do(req)
 	if err != nil {
 		select {
