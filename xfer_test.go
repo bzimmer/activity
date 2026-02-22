@@ -59,7 +59,6 @@ func TestPoller(t *testing.T) {
 		{name: "ctx timeout", status: 1, it: 5, in: time.Second, to: time.Millisecond * 10, err: true},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()

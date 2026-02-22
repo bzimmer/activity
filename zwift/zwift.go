@@ -21,7 +21,7 @@ const userAgent = "CNL/3.4.1 (Darwin Kernel 20.3.0) zwift/1.0.61590 curl/7.64.1"
 
 // Endpoint is Zwifts's OAuth 2.0 endpoint
 func Endpoint() oauth2.Endpoint {
-	return oauth2.Endpoint{
+	return oauth2.Endpoint{ //nolint:gosec // not a secret
 		TokenURL:  "https://secure.zwift.com/auth/realms/zwift/tokens/access/codes",
 		AuthStyle: oauth2.AuthStyleAutoDetect,
 	}

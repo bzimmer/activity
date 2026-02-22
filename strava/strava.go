@@ -27,7 +27,7 @@ type APIOption func(url.Values) error
 
 // Endpoint is Strava's OAuth 2.0 endpoint
 func Endpoint() oauth2.Endpoint {
-	return oauth2.Endpoint{
+	return oauth2.Endpoint{ //nolint:gosec // not a secret
 		AuthURL:   "https://www.strava.com/oauth/authorize",
 		TokenURL:  "https://www.strava.com/oauth/token",
 		AuthStyle: oauth2.AuthStyleAutoDetect,
