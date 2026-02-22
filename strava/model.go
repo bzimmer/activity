@@ -329,7 +329,7 @@ type Photo struct {
 	Ref            string            `json:"ref"`
 	UID            string            `json:"uid"`
 	Caption        string            `json:"caption"`
-	Type           string            `json:"type"`
+	Type           int               `json:"type"`
 	Source         int               `json:"source"`
 	UploadedAt     time.Time         `json:"uploaded_at"`
 	CreatedAt      time.Time         `json:"created_at"`

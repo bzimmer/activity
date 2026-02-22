@@ -93,7 +93,7 @@ const (
 
 // MarshalJSON converts a Format enum to a string representation
 func (f Format) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, f.String())), nil
+	return fmt.Appendf(nil, `"%s"`, f.String()), nil
 }
 
 // ToFormat converts a file extension (with or without the ".") to a Format

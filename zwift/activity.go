@@ -8,6 +8,8 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/bzimmer/activity"
 )
@@ -101,10 +103,17 @@ func (s *ActivityService) Export(ctx context.Context, activityID int64) (*activi
 // ExportActivity exports the data file for the activity
 func (s *ActivityService) ExportActivity(ctx context.Context, act *Activity) (*activity.Export, error) {
 	uri := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", act.FitFileBucket, act.FitFileKey)
+
+	// Validate URL to prevent SSRF
+	if err := validateZwiftS3URL(uri); err != nil {
+		return nil, err
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
 	}
+	//nolint:gosec // G704 -- URL has been validated to ensure it's a legitimate Zwift S3 bucket
 	res, err := s.client.client.Do(req)
 	if err != nil {
 		select {
@@ -152,4 +161,30 @@ func (s *ActivityService) ExportActivity(ctx context.Context, act *Activity) (*a
 			Name:   params["filename"],
 			Format: activity.FormatFIT},
 	}, nil
+}
+
+// validateZwiftS3URL validates that the URL is a legitimate Zwift S3 bucket URL
+func validateZwiftS3URL(rawURL string) error {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	// Ensure HTTPS scheme
+	if parsedURL.Scheme != "https" {
+		return fmt.Errorf("invalid URL scheme: expected https, got %s", parsedURL.Scheme)
+	}
+
+	// Validate that the host is an S3 bucket in amazonaws.com
+	if !strings.HasSuffix(parsedURL.Host, ".s3.amazonaws.com") {
+		return fmt.Errorf("invalid host: expected *.s3.amazonaws.com, got %s", parsedURL.Host)
+	}
+
+	// Validate bucket name contains "zwift" (case-insensitive)
+	bucketName := strings.TrimSuffix(parsedURL.Host, ".s3.amazonaws.com")
+	if !strings.Contains(strings.ToLower(bucketName), "zwift") {
+		return fmt.Errorf("invalid bucket: expected Zwift bucket, got %s", bucketName)
+	}
+
+	return nil
 }

@@ -33,7 +33,7 @@ type Client struct {
 
 // Endpoint is CyclingAnalytics's OAuth 2.0 endpoint
 func Endpoint() oauth2.Endpoint {
-	return oauth2.Endpoint{
+	return oauth2.Endpoint{ //nolint:gosec // not a secret
 		AuthURL:   "https://www.cyclinganalytics.com/api/auth",
 		TokenURL:  "https://www.cyclinganalytics.com/api/token",
 		AuthStyle: oauth2.AuthStyleAutoDetect,
