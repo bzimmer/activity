@@ -1,7 +1,5 @@
 package rwgps
 
-//go:generate genwith --do --client --token --config --ratelimit --package rwgps
-
 import (
 	"bytes"
 	"context"
