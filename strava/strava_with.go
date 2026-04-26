@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -175,7 +176,7 @@ func (c *Client) do(req *http.Request, v interface{}) error {
 			case error:
 				return q
 			default:
-				return q.(error)
+				return fmt.Errorf("unexpected error response: %v", q)
 			}
 		}
 		return err

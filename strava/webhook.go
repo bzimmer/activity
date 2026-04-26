@@ -98,12 +98,12 @@ func webhookSubscriptionHandler(subscriber WebhookSubscriber) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		verify, ok := q["hub.verify_token"]
-		if !ok && len(verify) == 1 {
+		if !ok || len(verify) != 1 {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		challenge, ok := q["hub.challenge"]
-		if !ok && len(challenge) == 1 {
+		if !ok || len(challenge) != 1 {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -112,6 +112,7 @@ func webhookSubscriptionHandler(subscriber WebhookSubscriber) http.HandlerFunc {
 			err := subscriber.SubscriptionRequest(challenge[0], verify[0])
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
