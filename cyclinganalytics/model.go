@@ -16,6 +16,16 @@ func (f *Fault) Error() string {
 	return f.Message
 }
 
+// SetDefaults populates Code and Message from the HTTP response when the body does not supply them.
+func (f *Fault) SetDefaults(code int, message string) {
+	if f.Code == 0 {
+		f.Code = code
+	}
+	if f.Message == "" {
+		f.Message = message
+	}
+}
+
 type (
 	UserID   int
 	Datetime struct {

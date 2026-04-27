@@ -267,10 +267,9 @@ func (s *ActivityService) StreamSets() map[string]string {
 
 func (s *ActivityService) validateStreams(streams []string) error {
 	x := streamsets()
-	for i := range streams {
-		_, ok := x[streams[i]]
-		if !ok {
-			return fmt.Errorf("invalid stream '%s'", streams[i])
+	for _, stream := range streams {
+		if _, ok := x[stream]; !ok {
+			return fmt.Errorf("invalid stream '%s'", stream)
 		}
 	}
 	return nil

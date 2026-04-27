@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -57,8 +56,7 @@ func WithRideOptions(r RideOptions) APIOption {
 func (s *RidesService) Ride(ctx context.Context, rideID int64, opts ...APIOption) (*Ride, error) {
 	uri := fmt.Sprintf("ride/%d", rideID)
 	v := url.Values{}
-	for i := range opts {
-		f := opts[i]
+	for _, f := range opts {
 		if f != nil {
 			if err := f(v); err != nil {
 				return nil, err
@@ -95,9 +93,8 @@ func (s *RidesService) Rides(ctx context.Context, userID UserID, spec activity.P
 	if err != nil {
 		return nil, err
 	}
-	if spec.Total > 0 {
-		n := math.Min(float64(len(res.Rides)), float64(spec.Total))
-		res.Rides = res.Rides[:int(n)]
+	if spec.Total > 0 && len(res.Rides) > spec.Total {
+		res.Rides = res.Rides[:spec.Total]
 	}
 	return res.Rides, nil
 }
@@ -179,10 +176,9 @@ func (s *RidesService) StreamSets() map[string]string {
 
 func validateStreams(streams []string) error {
 	x := streamsets()
-	for i := range streams {
-		_, ok := x[streams[i]]
-		if !ok {
-			return fmt.Errorf("invalid stream '%s'", streams[i])
+	for _, stream := range streams {
+		if _, ok := x[stream]; !ok {
+			return fmt.Errorf("invalid stream '%s'", stream)
 		}
 	}
 	return nil

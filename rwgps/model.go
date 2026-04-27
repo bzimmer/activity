@@ -36,11 +36,21 @@ func (f *Fault) Error() string {
 	return f.Message
 }
 
+// SetDefaults populates Code and Message from the HTTP response when the body does not supply them.
+func (f *Fault) SetDefaults(code int, message string) {
+	if f.Code == 0 {
+		f.Code = code
+	}
+	if f.Message == "" {
+		f.Message = message
+	}
+}
+
 // User is a user
 type User struct {
 	ID        UserID `json:"id"`
 	Name      string `json:"name"`
-	AuthToken string `json:"auth_token"` //nolint:gosec // field unmarshals API token, not a hardcoded credential
+	AuthToken string `json:"auth_token"`
 }
 
 type Summary struct {

@@ -1,7 +1,5 @@
 package cyclinganalytics
 
-//go:generate genwith --do --client --endpoint-func --config --token --ratelimit --package cyclinganalytics
-
 import (
 	"context"
 	"errors"
@@ -13,6 +11,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/bzimmer/activity"
+	"github.com/bzimmer/activity/internal/httpclient"
 )
 
 const _baseURL = "https://www.cyclinganalytics.com/api"
@@ -22,9 +21,7 @@ type APIOption func(url.Values) error
 
 // Client for accessing Cycling Analytics' API
 type Client struct {
-	config  oauth2.Config
-	token   *oauth2.Token
-	client  *http.Client
+	base    *httpclient.Client[*Fault]
 	baseURL string
 
 	User  *UserService
@@ -61,7 +58,7 @@ func WithBaseURL(baseURL string) Option {
 
 func (c *Client) newAPIRequest(
 	ctx context.Context, method, uri string, values *url.Values, body io.Reader) (*http.Request, error) {
-	if c.token.AccessToken == "" {
+	if c.base.Token.AccessToken == "" {
 		return nil, errors.New("accessToken required")
 	}
 	q := fmt.Sprintf("%s/%s", c.baseURL, uri)
@@ -78,7 +75,7 @@ func (c *Client) newAPIRequest(
 	}
 	req.Header.Set("User-Agent", activity.UserAgent)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", c.token.AccessToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", c.base.Token.AccessToken))
 	return req, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,93 @@ import (
 	"github.com/bzimmer/activity"
 	"github.com/bzimmer/activity/rwgps"
 )
+
+func TestTripUpload(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	tests := []struct {
+		name   string
+		file   *activity.File
+		before func(mux *http.ServeMux)
+		after  func(upload *rwgps.Upload, err error)
+	}{
+		{
+			name:   "nil file returns error",
+			file:   nil,
+			before: func(_ *http.ServeMux) {},
+			after: func(upload *rwgps.Upload, err error) {
+				a.Error(err)
+				a.Nil(upload)
+			},
+		},
+		{
+			name:   "file with no name returns error",
+			file:   &activity.File{Format: activity.FormatGPX},
+			before: func(_ *http.ServeMux) {},
+			after: func(upload *rwgps.Upload, err error) {
+				a.Error(err)
+				a.Nil(upload)
+			},
+		},
+		{
+			name:   "file with original format returns error",
+			file:   &activity.File{Name: "ride.gpx", Format: activity.FormatOriginal},
+			before: func(_ *http.ServeMux) {},
+			after: func(upload *rwgps.Upload, err error) {
+				a.Error(err)
+				a.Nil(upload)
+			},
+		},
+		{
+			name: "valid upload",
+			file: &activity.File{
+				Reader: strings.NewReader("<gpx/>"),
+				Name:   "ride.gpx",
+				Format: activity.FormatGPX,
+			},
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/trips.json", func(w http.ResponseWriter, _ *http.Request) {
+					enc := json.NewEncoder(w)
+					_ = enc.Encode(&rwgps.Upload{TaskID: 9999, Success: 0})
+				})
+			},
+			after: func(upload *rwgps.Upload, err error) {
+				a.NoError(err)
+				a.NotNil(upload)
+				a.Equal(int64(9999), upload.TaskID)
+			},
+		},
+		{
+			name: "server error on upload",
+			file: &activity.File{
+				Reader: strings.NewReader("<gpx/>"),
+				Name:   "ride.gpx",
+				Format: activity.FormatGPX,
+			},
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/trips.json", func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusInternalServerError)
+				})
+			},
+			after: func(upload *rwgps.Upload, err error) {
+				a.Error(err)
+				a.Nil(upload)
+			},
+		},
+	}
+
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client, svr := newClient(tt.before)
+			defer svr.Close()
+			upload, err := client.Trips.Upload(context.TODO(), tt.file)
+			tt.after(upload, err)
+		})
+	}
+}
 
 func TestTrip(t *testing.T) {
 	t.Parallel()

@@ -232,3 +232,36 @@ func TestWebhookSubscriptionHandler(t *testing.T) {
 
 	a.Equal(500, w.Code)
 }
+
+func TestWebhookSubscriptionHandlerMissingParams(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{
+			name: "missing verify_token",
+			url:  "/webhook?hub.challenge=baz",
+		},
+		{
+			name: "missing challenge",
+			url:  "/webhook?hub.verify_token=bar",
+		},
+		{
+			name: "missing both params",
+			url:  "/webhook",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, router := setupTestRouter()
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequestWithContext(context.TODO(), http.MethodGet, tt.url, nil)
+			router.ServeHTTP(w, req)
+			a.Equal(500, w.Code)
+		})
+	}
+}

@@ -1,7 +1,5 @@
 package strava
 
-//go:generate genwith --do --client --endpoint-func --config --token --ratelimit --package strava
-
 import (
 	"bytes"
 	"context"
@@ -14,6 +12,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/bzimmer/activity"
+	"github.com/bzimmer/activity/internal/httpclient"
 )
 
 const (
@@ -36,9 +35,7 @@ func Endpoint() oauth2.Endpoint {
 
 // Client for accessing Strava's API
 type Client struct {
-	client  *http.Client
-	token   *oauth2.Token
-	config  oauth2.Config
+	base    *httpclient.Client[*Fault]
 	baseURL string
 
 	Auth     *AuthService
@@ -81,7 +78,7 @@ func withServices() Option {
 }
 
 func (c *Client) newAPIRequest(ctx context.Context, method, uri string, body io.Reader) (*http.Request, error) {
-	if c.token.AccessToken == "" {
+	if c.base.Token.AccessToken == "" {
 		return nil, errors.New("accessToken required")
 	}
 	u, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, uri))
@@ -93,7 +90,7 @@ func (c *Client) newAPIRequest(ctx context.Context, method, uri string, body io.
 		return nil, err
 	}
 	req.Header.Set("User-Agent", activity.UserAgent)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", c.token.AccessToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", c.base.Token.AccessToken))
 	return req, nil
 }
 
@@ -106,8 +103,8 @@ func (c *Client) newWebhookRequest(
 	var buf io.Reader
 	if body != nil {
 		form := url.Values{}
-		form.Set("client_id", c.config.ClientID)
-		form.Set("client_secret", c.config.ClientSecret)
+		form.Set("client_id", c.base.Config.ClientID)
+		form.Set("client_secret", c.base.Config.ClientSecret)
 		for key, value := range body {
 			form.Set(key, value)
 		}

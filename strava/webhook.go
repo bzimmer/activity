@@ -80,7 +80,7 @@ func (s *WebhookService) Unsubscribe(ctx context.Context, subscriptionID int64) 
 // List active webhook subscriptions
 func (s *WebhookService) List(ctx context.Context) ([]*WebhookSubscription, error) {
 	uri := fmt.Sprintf("push_subscriptions?client_id=%s&client_secret=%s",
-		s.client.config.ClientID, s.client.config.ClientSecret)
+		s.client.base.Config.ClientID, s.client.base.Config.ClientSecret)
 	req, err := s.client.newWebhookRequest(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
@@ -98,12 +98,12 @@ func webhookSubscriptionHandler(subscriber WebhookSubscriber) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		verify, ok := q["hub.verify_token"]
-		if !ok && len(verify) == 1 {
+		if !ok || len(verify) != 1 {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		challenge, ok := q["hub.challenge"]
-		if !ok && len(challenge) == 1 {
+		if !ok || len(challenge) != 1 {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -112,6 +112,7 @@ func webhookSubscriptionHandler(subscriber WebhookSubscriber) http.HandlerFunc {
 			err := subscriber.SubscriptionRequest(challenge[0], verify[0])
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
