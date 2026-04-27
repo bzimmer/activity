@@ -143,13 +143,53 @@ func TestOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "with http tracing",
+			name: "with token",
 			before: func() []strava.Option {
-				return []strava.Option{strava.WithHTTPTracing(true)}
+				return []strava.Option{strava.WithToken(&oauth2.Token{})}
 			},
 			after: func(client *strava.Client, err error) {
 				a.NoError(err)
 				a.NotNil(client)
+			},
+		},
+		{
+			name: "with transport",
+			before: func() []strava.Option {
+				return []strava.Option{strava.WithTransport(http.DefaultTransport)}
+			},
+			after: func(client *strava.Client, err error) {
+				a.NoError(err)
+				a.NotNil(client)
+			},
+		},
+		{
+			name: "with nil transport returns error",
+			before: func() []strava.Option {
+				return []strava.Option{strava.WithTransport(nil)}
+			},
+			after: func(client *strava.Client, err error) {
+				a.Error(err)
+				a.Nil(client)
+			},
+		},
+		{
+			name: "with http client",
+			before: func() []strava.Option {
+				return []strava.Option{strava.WithHTTPClient(http.DefaultClient)}
+			},
+			after: func(client *strava.Client, err error) {
+				a.NoError(err)
+				a.NotNil(client)
+			},
+		},
+		{
+			name: "with nil http client returns error",
+			before: func() []strava.Option {
+				return []strava.Option{strava.WithHTTPClient(nil)}
+			},
+			after: func(client *strava.Client, err error) {
+				a.Error(err)
+				a.Nil(client)
 			},
 		},
 	} {
