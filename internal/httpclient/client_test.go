@@ -13,15 +13,15 @@ import (
 	"github.com/bzimmer/activity/internal/httpclient"
 )
 
-// testFault is a minimal Fault implementation used only in tests.
-type testFault struct {
+// testFaultError is a minimal Fault implementation used only in tests.
+type testFaultError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
-func (f *testFault) Error() string { return f.Message }
+func (f *testFaultError) Error() string { return f.Message }
 
-func (f *testFault) SetDefaults(code int, message string) {
+func (f *testFaultError) SetDefaults(code int, message string) {
 	if f.Code == 0 {
 		f.Code = code
 	}
@@ -30,20 +30,20 @@ func (f *testFault) SetDefaults(code int, message string) {
 	}
 }
 
-func newClient(before func(*http.ServeMux)) (*httpclient.Client[*testFault], *httptest.Server) {
+func newClient(before func(*http.ServeMux)) (*httpclient.Client[*testFaultError], *httptest.Server) {
 	mux := http.NewServeMux()
 	if before != nil {
 		before(mux)
 	}
 	svr := httptest.NewServer(mux)
-	c := httpclient.New(func() *testFault { return &testFault{} })
+	c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 	return c, svr
 }
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	c := httpclient.New(func() *testFault { return &testFault{} })
+	c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 	a.NotNil(c)
 	a.NotNil(c.HTTP)
 	a.NotNil(c.Token)
@@ -93,7 +93,7 @@ func TestDo(t *testing.T) {
 				mux.HandleFunc("/bad", func(w http.ResponseWriter, _ *http.Request) {
 					w.WriteHeader(http.StatusBadRequest)
 					enc := json.NewEncoder(w)
-					a.NoError(enc.Encode(&testFault{Code: 400, Message: "bad request"}))
+					a.NoError(enc.Encode(&testFaultError{Code: 400, Message: "bad request"}))
 				})
 			},
 			after: func(_ *result, err error) {
@@ -240,7 +240,7 @@ func TestApplyRateLimiter(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c := httpclient.New(func() *testFault { return &testFault{} })
+			c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 			err := httpclient.ApplyRateLimiter(c, tt.limiter)
 			if tt.wantErr {
 				a.Error(err)
@@ -267,7 +267,7 @@ func TestApplyHTTPTracing(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c := httpclient.New(func() *testFault { return &testFault{} })
+			c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 			a.NoError(httpclient.ApplyHTTPTracing(c, tt.debug))
 		})
 	}
@@ -298,7 +298,7 @@ func TestApplyTransport(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c := httpclient.New(func() *testFault { return &testFault{} })
+			c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 			err := httpclient.ApplyTransport(c, tt.transport)
 			if tt.wantErr {
 				a.Error(err)
@@ -334,7 +334,7 @@ func TestApplyHTTPClient(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c := httpclient.New(func() *testFault { return &testFault{} })
+			c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 			err := httpclient.ApplyHTTPClient(c, tt.client)
 			if tt.wantErr {
 				a.Error(err)
@@ -348,7 +348,7 @@ func TestApplyHTTPClient(t *testing.T) {
 func TestApplyAutoRefresh(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-	c := httpclient.New(func() *testFault { return &testFault{} })
+	c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 	a.NoError(httpclient.ApplyAutoRefresh(context.Background(), c))
 	a.NotNil(c.HTTP)
 }

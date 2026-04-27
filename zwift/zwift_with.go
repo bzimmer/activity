@@ -108,4 +108,3 @@ func WithHTTPClient(client *http.Client) Option {
 func (c *Client) do(req *http.Request, v any) error {
 	return c.base.Do(req, v)
 }
-

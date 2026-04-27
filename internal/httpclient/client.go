@@ -43,7 +43,7 @@ func New[F Fault](newFault func() F) *Client[F] {
 // If the response status indicates an error, a new F is decoded and returned.
 func (c *Client[F]) Do(req *http.Request, v any) error {
 	ctx := req.Context()
-	res, err := c.HTTP.Do(req)
+	res, err := c.HTTP.Do(req) //nolint:gosec // G704: false positive, taint analysis on http.Client
 	if err != nil {
 		select {
 		case <-ctx.Done():
@@ -56,16 +56,16 @@ func (c *Client[F]) Do(req *http.Request, v any) error {
 
 	if res.StatusCode >= http.StatusBadRequest {
 		f := c.newFault()
-		if err := json.NewDecoder(res.Body).Decode(f); err != nil && !errors.Is(err, io.EOF) {
-			return err
+		if decErr := json.NewDecoder(res.Body).Decode(f); decErr != nil && !errors.Is(decErr, io.EOF) {
+			return decErr
 		}
 		f.SetDefaults(res.StatusCode, http.StatusText(res.StatusCode))
 		return f
 	}
 
 	if v != nil {
-		if err := json.NewDecoder(res.Body).Decode(v); err != nil && !errors.Is(err, io.EOF) {
-			return err
+		if decErr := json.NewDecoder(res.Body).Decode(v); decErr != nil && !errors.Is(decErr, io.EOF) {
+			return decErr
 		}
 	}
 	return nil

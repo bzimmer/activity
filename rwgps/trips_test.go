@@ -25,8 +25,8 @@ func TestTripUpload(t *testing.T) {
 		after  func(upload *rwgps.Upload, err error)
 	}{
 		{
-			name: "nil file returns error",
-			file: nil,
+			name:   "nil file returns error",
+			file:   nil,
 			before: func(_ *http.ServeMux) {},
 			after: func(upload *rwgps.Upload, err error) {
 				a.Error(err)
@@ -34,8 +34,8 @@ func TestTripUpload(t *testing.T) {
 			},
 		},
 		{
-			name: "file with no name returns error",
-			file: &activity.File{Format: activity.FormatGPX},
+			name:   "file with no name returns error",
+			file:   &activity.File{Format: activity.FormatGPX},
 			before: func(_ *http.ServeMux) {},
 			after: func(upload *rwgps.Upload, err error) {
 				a.Error(err)
@@ -43,8 +43,8 @@ func TestTripUpload(t *testing.T) {
 			},
 		},
 		{
-			name: "file with original format returns error",
-			file: &activity.File{Name: "ride.gpx", Format: activity.FormatOriginal},
+			name:   "file with original format returns error",
+			file:   &activity.File{Name: "ride.gpx", Format: activity.FormatOriginal},
 			before: func(_ *http.ServeMux) {},
 			after: func(upload *rwgps.Upload, err error) {
 				a.Error(err)
