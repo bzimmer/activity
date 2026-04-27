@@ -1,6 +1,6 @@
 module github.com/bzimmer/activity
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/bzimmer/httpwares v0.1.3
@@ -9,16 +9,16 @@ require (
 	github.com/twpayne/go-geom v1.6.1
 	github.com/twpayne/go-gpx v1.5.0
 	github.com/twpayne/go-polyline v1.1.1
-	golang.org/x/oauth2 v0.35.0
-	golang.org/x/sync v0.19.0
-	golang.org/x/time v0.14.0
+	golang.org/x/oauth2 v0.36.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/time v0.15.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
