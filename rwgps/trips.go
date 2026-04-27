@@ -135,8 +135,8 @@ func (s *TripsService) Upload(ctx context.Context, file *activity.File) (*Upload
 		"trip[description]":    "",
 		"trip[bad_elevations]": "false",
 		"version":              apiVersion,
-		"apikey":               s.client.config.ClientID,
-		"auth_token":           s.client.token.AccessToken,
+		"apikey":               s.client.base.Config.ClientID,
+		"auth_token":           s.client.base.Token.AccessToken,
 	} {
 		if err := w.WriteField(k, v); err != nil {
 			return nil, err

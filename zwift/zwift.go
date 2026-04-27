@@ -12,6 +12,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/bzimmer/activity"
+	"github.com/bzimmer/activity/internal/httpclient"
 )
 
 const _baseURL = "https://us-or-rly101.zwift.com"
@@ -27,9 +28,7 @@ func Endpoint() oauth2.Endpoint {
 
 // Client for communicating with Zwift
 type Client struct {
-	token    *oauth2.Token
-	client   *http.Client
-	config   oauth2.Config
+	base     *httpclient.Client[*Fault]
 	baseURL  string
 	username string
 	password string
@@ -50,7 +49,7 @@ func withServices() Option {
 		c.Auth = &AuthService{c}
 		c.Profile = &ProfileService{c}
 		c.Activity = &ActivityService{c}
-		c.token.TokenType = "bearer"
+		c.base.Token.TokenType = "bearer"
 		if c.baseURL == "" {
 			c.baseURL = _baseURL
 		}
@@ -79,7 +78,7 @@ func WithTokenRefresh(username, password string) Option {
 func (c *Client) validateToken(ctx context.Context) error {
 	c.lock.RLock()
 	// if no access token try to acquire one
-	if c.token != nil && c.token.AccessToken != "" {
+	if c.base.Token != nil && c.base.Token.AccessToken != "" {
 		c.lock.RUnlock()
 		return nil
 	}
@@ -96,7 +95,7 @@ func (c *Client) validateToken(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	c.token = token
+	c.base.Token = token
 	return nil
 }
 
@@ -114,6 +113,6 @@ func (c *Client) newAPIRequest(ctx context.Context, method, uri string) (*http.R
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", c.token.AccessToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", c.base.Token.AccessToken))
 	return req, nil
 }

@@ -113,7 +113,7 @@ func (s *ActivityService) ExportActivity(ctx context.Context, act *Activity) (*a
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.client.client.Do(req)
+	res, err := s.client.base.HTTP.Do(req)
 	if err != nil {
 		select {
 		case <-ctx.Done():

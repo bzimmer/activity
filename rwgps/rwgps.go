@@ -8,9 +8,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"golang.org/x/oauth2"
-
 	"github.com/bzimmer/activity"
+	"github.com/bzimmer/activity/internal/httpclient"
 )
 
 const (
@@ -20,9 +19,7 @@ const (
 
 // Client for communicating with RWGPS
 type Client struct {
-	config  oauth2.Config
-	token   *oauth2.Token
-	client  *http.Client
+	base    *httpclient.Client[*Fault]
 	baseURL string
 
 	Users *UsersService
@@ -59,8 +56,8 @@ func (c *Client) newAPIRequest(ctx context.Context, uri string, params map[strin
 	}
 	x := map[string]string{
 		"version":    apiVersion,
-		"apikey":     c.config.ClientID,
-		"auth_token": c.token.AccessToken,
+		"apikey":     c.base.Config.ClientID,
+		"auth_token": c.base.Token.AccessToken,
 	}
 	for k, v := range params {
 		x[k] = v

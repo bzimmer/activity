@@ -80,7 +80,7 @@ func (s *WebhookService) Unsubscribe(ctx context.Context, subscriptionID int64) 
 // List active webhook subscriptions
 func (s *WebhookService) List(ctx context.Context) ([]*WebhookSubscription, error) {
 	uri := fmt.Sprintf("push_subscriptions?client_id=%s&client_secret=%s",
-		s.client.config.ClientID, s.client.config.ClientSecret)
+		s.client.base.Config.ClientID, s.client.base.Config.ClientSecret)
 	req, err := s.client.newWebhookRequest(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err

@@ -26,7 +26,7 @@ func (s *AuthService) Refresh(ctx context.Context, username, password string) (*
 		"password":   {password},
 		"client_id":  {"Zwift_Mobile_Link"},
 	}
-	endpoint := s.client.config.Endpoint
+	endpoint := s.client.base.Config.Endpoint
 	body := strings.NewReader(values.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.TokenURL, body)
 	if err != nil {
