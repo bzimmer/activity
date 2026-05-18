@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -73,6 +75,7 @@ func TestSegmentEfforts(t *testing.T) {
 		name       string
 		pagination activity.Pagination
 		opts       []strava.Option
+		opt        strava.APIOption
 		after      func(segmentEfforts []*strava.SegmentEffort, err error)
 	}{
 		{
@@ -127,6 +130,42 @@ func TestSegmentEfforts(t *testing.T) {
 				a.Nil(segmentEfforts)
 			},
 		},
+		{
+			name:       "zero dates",
+			opt:        strava.WithDateRange(time.Time{}, time.Time{}),
+			pagination: activity.Pagination{Total: 2},
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
+				a.NoError(err)
+				a.NotNil(segmentEfforts)
+				a.Equal(2, len(segmentEfforts))
+			},
+		},
+		{
+			name: "before and after",
+			opt: func() strava.APIOption {
+				before := time.Now()
+				after := before.Add(time.Hour * time.Duration(-24*7))
+				return strava.WithDateRange(before, after)
+			}(),
+			pagination: activity.Pagination{Total: 2},
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
+				a.NoError(err)
+				a.NotNil(segmentEfforts)
+				a.Equal(2, len(segmentEfforts))
+			},
+		},
+		{
+			name: "error in option",
+			opt: func(url.Values) error {
+				return errors.New("error in option")
+			},
+			pagination: activity.Pagination{Total: 2},
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
+				a.Error(err)
+				a.Nil(segmentEfforts)
+				a.Contains(err.Error(), "error in option")
+			},
+		},
 	}
 	for i := range tests {
 		tt := tests[i]
@@ -144,7 +183,7 @@ func TestSegmentEfforts(t *testing.T) {
 				})
 			}, tt.opts...)
 			defer svr.Close()
-			tt.after(client.Segment.SegmentEfforts(context.TODO(), tt.pagination))
+			tt.after(client.Segment.SegmentEfforts(context.TODO(), tt.pagination, tt.opt))
 		})
 	}
 }
