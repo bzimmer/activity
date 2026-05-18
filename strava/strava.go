@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"golang.org/x/oauth2"
 
@@ -23,6 +24,24 @@ const (
 
 // APIOption for configuring API requests
 type APIOption func(url.Values) error
+
+// WithDateRange sets the before and after date range.
+func WithDateRange(before, after time.Time) APIOption {
+	return func(v url.Values) error {
+		if !before.IsZero() && !after.IsZero() {
+			if after.After(before) {
+				return errors.New("invalid date range")
+			}
+		}
+		if !before.IsZero() {
+			v.Set("before", fmt.Sprintf("%d", before.Unix()))
+		}
+		if !after.IsZero() {
+			v.Set("after", fmt.Sprintf("%d", after.Unix()))
+		}
+		return nil
+	}
+}
 
 // Endpoint is Strava's OAuth 2.0 endpoint
 func Endpoint() oauth2.Endpoint {
@@ -40,6 +59,7 @@ type Client struct {
 
 	Auth     *AuthService
 	Route    *RouteService
+	Segment  *SegmentService
 	Webhook  *WebhookService
 	Athlete  *AthleteService
 	Activity *ActivityService
@@ -67,6 +87,7 @@ func withServices() Option {
 	return func(c *Client) error {
 		c.Auth = &AuthService{client: c}
 		c.Route = &RouteService{client: c}
+		c.Segment = &SegmentService{client: c}
 		c.Webhook = &WebhookService{client: c}
 		c.Athlete = &AthleteService{client: c}
 		c.Activity = &ActivityService{client: c}
