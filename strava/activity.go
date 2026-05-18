@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -27,24 +26,6 @@ type ActivityIterFunc func(*Activity) (bool, error)
 
 // fileNameRE allowable characters
 var fileNameRE = regexp.MustCompile("[A-Za-z0-9-]+")
-
-// WithDateRange sets the before and after date range
-func WithDateRange(before, after time.Time) APIOption {
-	return func(v url.Values) error {
-		if !before.IsZero() && !after.IsZero() {
-			if after.After(before) {
-				return errors.New("invalid date range")
-			}
-		}
-		if !before.IsZero() {
-			v.Set("before", fmt.Sprintf("%d", before.Unix()))
-		}
-		if !after.IsZero() {
-			v.Set("after", fmt.Sprintf("%d", after.Unix()))
-		}
-		return nil
-	}
-}
 
 type channelPaginator struct {
 	count      int
