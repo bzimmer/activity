@@ -18,6 +18,7 @@ func TestSegmentEffort(t *testing.T) {
 	tests := []struct {
 		name   string
 		before func(mux *http.ServeMux)
+		opts   []strava.Option
 		after  func(segmentEffort *strava.SegmentEffort, err error)
 	}{
 		{
@@ -43,12 +44,20 @@ func TestSegmentEffort(t *testing.T) {
 				a.Error(err)
 			},
 		},
+		{
+			name:   "invalid base url",
+			before: func(_ *http.ServeMux) {},
+			opts:   []strava.Option{strava.WithBaseURL("://bad-url")},
+			after: func(_ *strava.SegmentEffort, err error) {
+				a.Error(err)
+			},
+		},
 	}
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			client, svr := newClientMust(tt.before)
+			client, svr := newClientMust(tt.before, tt.opts...)
 			defer svr.Close()
 			tt.after(client.Segment.SegmentEffort(context.TODO(), 229781))
 		})
@@ -62,6 +71,7 @@ func TestSegmentEfforts(t *testing.T) {
 	tests := []struct {
 		name       string
 		pagination activity.Pagination
+		opts       []strava.Option
 		after      func(segmentEfforts []*strava.SegmentEffort, err error)
 	}{
 		{
@@ -99,6 +109,15 @@ func TestSegmentEfforts(t *testing.T) {
 				a.Nil(segmentEfforts)
 			},
 		},
+		{
+			name:       "invalid base url",
+			pagination: activity.Pagination{Total: 1},
+			opts:       []strava.Option{strava.WithBaseURL("://bad-url")},
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
+				a.Error(err)
+				a.Nil(segmentEfforts)
+			},
+		},
 	}
 	for i := range tests {
 		tt := tests[i]
@@ -108,7 +127,7 @@ func TestSegmentEfforts(t *testing.T) {
 				mux.Handle("/segment_efforts", &ManyHandler{
 					Filename: "testdata/segment_effort.json",
 				})
-			})
+			}, tt.opts...)
 			defer svr.Close()
 			tt.after(client.Segment.SegmentEfforts(context.TODO(), tt.pagination))
 		})
