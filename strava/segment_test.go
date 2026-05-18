@@ -11,33 +11,35 @@ import (
 	"github.com/bzimmer/activity/strava"
 )
 
-func TestSegment(t *testing.T) {
+func TestSegmentEffort(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
 	tests := []struct {
 		name   string
 		before func(mux *http.ServeMux)
-		after  func(segment *strava.Segment, err error)
+		after  func(segmentEffort *strava.SegmentEffort, err error)
 	}{
 		{
-			name: "valid segment",
+			name: "valid segment effort",
 			before: func(mux *http.ServeMux) {
-				mux.HandleFunc("/segments/229781", func(w http.ResponseWriter, r *http.Request) {
-					http.ServeFile(w, r, "testdata/segment.json")
+				mux.HandleFunc("/segment_efforts/229781", func(w http.ResponseWriter, r *http.Request) {
+					http.ServeFile(w, r, "testdata/segment_effort.json")
 				})
 			},
-			after: func(segment *strava.Segment, err error) {
+			after: func(segmentEffort *strava.SegmentEffort, err error) {
 				a.NoError(err)
-				a.NotNil(segment)
-				a.Equal(229781, segment.ID)
-				a.Equal("Hawk Hill", segment.Name)
+				a.NotNil(segmentEffort)
+				a.Equal(int64(229781), segmentEffort.ID)
+				a.Equal("Hawk Hill Effort", segmentEffort.Name)
+				a.NotNil(segmentEffort.Segment)
+				a.Equal(229781, segmentEffort.Segment.ID)
 			},
 		},
 		{
-			name:   "invalid segment",
+			name:   "invalid segment effort",
 			before: func(_ *http.ServeMux) {},
-			after: func(_ *strava.Segment, err error) {
+			after: func(_ *strava.SegmentEffort, err error) {
 				a.Error(err)
 			},
 		},
@@ -48,53 +50,53 @@ func TestSegment(t *testing.T) {
 			t.Parallel()
 			client, svr := newClientMust(tt.before)
 			defer svr.Close()
-			tt.after(client.Segment.Segment(context.TODO(), 229781))
+			tt.after(client.Segment.SegmentEffort(context.TODO(), 229781))
 		})
 	}
 }
 
-func TestSegments(t *testing.T) {
+func TestSegmentEfforts(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
 	tests := []struct {
 		name       string
 		pagination activity.Pagination
-		after      func(segments []*strava.Segment, err error)
+		after      func(segmentEfforts []*strava.SegmentEffort, err error)
 	}{
 		{
 			name:       "test total, start, and count",
 			pagination: activity.Pagination{Total: 127, Start: 0, Count: 1},
-			after: func(segments []*strava.Segment, err error) {
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
 				a.NoError(err)
-				a.NotNil(segments)
-				a.Equal(127, len(segments))
+				a.NotNil(segmentEfforts)
+				a.Equal(127, len(segmentEfforts))
 			},
 		},
 		{
 			name:       "test total and start",
 			pagination: activity.Pagination{Total: 234, Start: 0},
-			after: func(segments []*strava.Segment, err error) {
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
 				a.NoError(err)
-				a.NotNil(segments)
-				a.Equal(234, len(segments))
+				a.NotNil(segmentEfforts)
+				a.Equal(234, len(segmentEfforts))
 			},
 		},
 		{
 			name:       "test total and start less than PageSize",
 			pagination: activity.Pagination{Total: 27, Start: 0},
-			after: func(segments []*strava.Segment, err error) {
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
 				a.NoError(err)
-				a.NotNil(segments)
-				a.Equal(27, len(segments))
+				a.NotNil(segmentEfforts)
+				a.Equal(27, len(segmentEfforts))
 			},
 		},
 		{
 			name:       "negative test",
 			pagination: activity.Pagination{Total: -1},
-			after: func(segments []*strava.Segment, err error) {
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
 				a.Error(err)
-				a.Nil(segments)
+				a.Nil(segmentEfforts)
 			},
 		},
 	}
@@ -103,12 +105,12 @@ func TestSegments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			client, svr := newClientMust(func(mux *http.ServeMux) {
-				mux.Handle("/segments/starred", &ManyHandler{
-					Filename: "testdata/segment.json",
+				mux.Handle("/segment_efforts", &ManyHandler{
+					Filename: "testdata/segment_effort.json",
 				})
 			})
 			defer svr.Close()
-			tt.after(client.Segment.Segments(context.TODO(), tt.pagination))
+			tt.after(client.Segment.SegmentEfforts(context.TODO(), tt.pagination))
 		})
 	}
 }
