@@ -11,6 +11,9 @@ import (
 // SegmentService is the API for segment effort endpoints.
 type SegmentService service
 
+// SegmentEffortIterFunc is called for each segment effort in the results.
+type SegmentEffortIterFunc func(*SegmentEffort) (bool, error)
+
 type segmentPaginator struct {
 	segmentEfforts []*SegmentEffort
 	service        SegmentService
@@ -65,4 +68,18 @@ func (s *SegmentService) SegmentEffort(ctx context.Context, segmentEffortID int6
 		return nil, err
 	}
 	return seg, nil
+}
+
+// SegmentEffortsIter executes the iter function over segment effort results.
+func SegmentEffortsIter(segmentEfforts []*SegmentEffort, iter SegmentEffortIterFunc) error {
+	for _, segmentEffort := range segmentEfforts {
+		ok, err := iter(segmentEffort)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return nil
+		}
+	}
+	return nil
 }

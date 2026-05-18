@@ -2,6 +2,7 @@ package strava_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -118,12 +119,26 @@ func TestSegmentEfforts(t *testing.T) {
 				a.Nil(segmentEfforts)
 			},
 		},
+		{
+			name:       "invalid response",
+			pagination: activity.Pagination{Total: 1},
+			after: func(segmentEfforts []*strava.SegmentEffort, err error) {
+				a.Error(err)
+				a.Nil(segmentEfforts)
+			},
+		},
 	}
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			client, svr := newClientMust(func(mux *http.ServeMux) {
+				if tt.name == "invalid response" {
+					mux.HandleFunc("/segment_efforts", func(w http.ResponseWriter, _ *http.Request) {
+						_, _ = w.Write([]byte("{"))
+					})
+					return
+				}
 				mux.Handle("/segment_efforts", &ManyHandler{
 					Filename: "testdata/segment_effort.json",
 				})
@@ -132,4 +147,50 @@ func TestSegmentEfforts(t *testing.T) {
 			tt.after(client.Segment.SegmentEfforts(context.TODO(), tt.pagination))
 		})
 	}
+}
+
+func TestSegmentEffortsIter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("all", func(t *testing.T) {
+		t.Parallel()
+		a := assert.New(t)
+		segmentEfforts := []*strava.SegmentEffort{{ID: 1}, {ID: 2}}
+		var ids []int64
+
+		err := strava.SegmentEffortsIter(segmentEfforts, func(segmentEffort *strava.SegmentEffort) (bool, error) {
+			ids = append(ids, segmentEffort.ID)
+			return true, nil
+		})
+
+		a.NoError(err)
+		a.Equal([]int64{1, 2}, ids)
+	})
+
+	t.Run("stop early", func(t *testing.T) {
+		t.Parallel()
+		a := assert.New(t)
+		segmentEfforts := []*strava.SegmentEffort{{ID: 1}, {ID: 2}}
+		count := 0
+
+		err := strava.SegmentEffortsIter(segmentEfforts, func(_ *strava.SegmentEffort) (bool, error) {
+			count++
+			return false, nil
+		})
+
+		a.NoError(err)
+		a.Equal(1, count)
+	})
+
+	t.Run("iter error", func(t *testing.T) {
+		t.Parallel()
+		a := assert.New(t)
+		want := errors.New("iter error")
+
+		err := strava.SegmentEffortsIter([]*strava.SegmentEffort{{ID: 1}}, func(_ *strava.SegmentEffort) (bool, error) {
+			return true, want
+		})
+
+		a.ErrorIs(err, want)
+	})
 }
