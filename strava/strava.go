@@ -40,6 +40,7 @@ type Client struct {
 
 	Auth     *AuthService
 	Route    *RouteService
+	Segment  *SegmentService
 	Webhook  *WebhookService
 	Athlete  *AthleteService
 	Activity *ActivityService
@@ -67,6 +68,7 @@ func withServices() Option {
 	return func(c *Client) error {
 		c.Auth = &AuthService{client: c}
 		c.Route = &RouteService{client: c}
+		c.Segment = &SegmentService{client: c}
 		c.Webhook = &WebhookService{client: c}
 		c.Athlete = &AthleteService{client: c}
 		c.Activity = &ActivityService{client: c}
