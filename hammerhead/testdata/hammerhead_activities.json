@@ -1,0 +1,22 @@
+{
+  "totalItems": 2,
+  "totalPages": 1,
+  "perPage": 100,
+  "currentPage": 1,
+  "data": [
+    {
+      "id": "activity-001",
+      "name": "Morning Ride",
+      "createdAt": "2024-03-15T08:30:00Z",
+      "duration": 3600,
+      "distance": 50000
+    },
+    {
+      "id": "activity-002",
+      "name": "Evening Gravel",
+      "createdAt": "2024-03-14T17:00:00Z",
+      "duration": 5400,
+      "distance": 75000
+    }
+  ]
+}

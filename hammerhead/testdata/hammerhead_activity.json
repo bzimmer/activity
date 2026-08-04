@@ -1,0 +1,11 @@
+{
+  "id": "activity-001",
+  "name": "Morning Ride",
+  "createdAt": "2024-03-15T08:30:00Z",
+  "duration": 3600,
+  "distance": 50000,
+  "activityType": "RIDE",
+  "description": "A lovely morning ride",
+  "polyline": "u{~vHhzrk@",
+  "updatedAt": "2024-03-15T09:30:00Z"
+}
