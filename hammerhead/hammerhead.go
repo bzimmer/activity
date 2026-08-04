@@ -20,7 +20,7 @@ const (
 
 // Endpoint is Hammerhead's OAuth 2.0 endpoint
 func Endpoint() oauth2.Endpoint {
-	return oauth2.Endpoint{ //nolint:gosec // not a secret
+	return oauth2.Endpoint{
 		AuthURL:   _authURL + "/oauth/authorize",
 		TokenURL:  _authURL + "/oauth/token",
 		AuthStyle: oauth2.AuthStyleInParams,

@@ -104,4 +104,3 @@ func WithHTTPClient(client *http.Client) Option {
 		return httpclient.ApplyHTTPClient(c.base, client)
 	}
 }
-

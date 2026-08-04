@@ -115,4 +115,3 @@ func (s *ActivitiesService) Export(ctx context.Context, activityID int64) (*acti
 	}
 	return &activity.Export{File: f, ID: activityID}, nil
 }
-
