@@ -1,6 +1,6 @@
 module github.com/bzimmer/activity
 
-go 1.26.2
+go 1.26.5
 
 require (
 	github.com/bzimmer/httpwares v0.1.3
