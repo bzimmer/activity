@@ -15,6 +15,8 @@ import (
 var _ activity.GPXEncoder = (*Route)(nil)
 var _ activity.GPXEncoder = (*Activity)(nil)
 
+const gpxVersion = "1.1"
+
 func polylineToLineString(polylines ...string) (*geom.LineString, error) {
 	const n = 2
 	var coords []float64
@@ -58,7 +60,7 @@ func (a *Activity) GPX() (*gpx.GPX, error) {
 			},
 		}
 		x := &gpx.GPX{
-			Version: "1.1",
+			Version: gpxVersion,
 			Trk:     []*gpx.TrkType{trk},
 		}
 		return x, nil
@@ -81,7 +83,7 @@ func (r *Route) GPX() (*gpx.GPX, error) {
 		},
 	}
 	x := &gpx.GPX{
-		Version: "1.1",
+		Version: gpxVersion,
 		Rte:     []*gpx.RteType{rte},
 	}
 	return x, nil
@@ -106,7 +108,7 @@ func (a *Activity) toGPXFromStreams() (*gpx.GPX, error) {
 		}
 	}
 	x := &gpx.GPX{
-		Version: "1.1",
+		Version: gpxVersion,
 		Trk: []*gpx.TrkType{
 			{
 				Name: a.Name,
