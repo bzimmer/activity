@@ -221,3 +221,16 @@ func TestEndpoint(t *testing.T) {
 	a.NotEmpty(ep.AuthURL)
 	a.NotEmpty(ep.TokenURL)
 }
+
+func TestInvalidAPIURL(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	client, err := hammerhead.NewClient(
+		hammerhead.WithAPIURL("%%invalid"),
+		hammerhead.WithTokenCredentials("token", "refresh", time.Time{}),
+	)
+	a.NoError(err)
+	_, err = client.Activities.Activity(t.Context(), "123")
+	a.Error(err)
+}

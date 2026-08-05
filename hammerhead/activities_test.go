@@ -251,6 +251,18 @@ func TestExporter(t *testing.T) {
 				a.Equal(activity.FormatFIT, export.Format)
 			},
 		},
+		{
+			name: "file error propagated",
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/activities/12345/file", func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNotFound)
+				})
+			},
+			after: func(export *activity.Export, err error) {
+				a.Error(err)
+				a.Nil(export)
+			},
+		},
 	}
 
 	for i := range tests {
@@ -274,7 +286,54 @@ func TestMissingAccessToken(t *testing.T) {
 		hammerhead.WithClientCredentials("id", "secret"),
 	)
 	a.NoError(err)
+
 	_, err = client.Activities.Activities(t.Context(), activity.Pagination{}, "")
 	a.Error(err)
 	a.Contains(err.Error(), "accessToken required")
+
+	_, err = client.Activities.Activity(t.Context(), "activity-001")
+	a.Error(err)
+	a.Contains(err.Error(), "accessToken required")
+
+	_, err = client.Activities.File(t.Context(), "activity-001")
+	a.Error(err)
+	a.Contains(err.Error(), "accessToken required")
+}
+
+func TestActivitiesTruncation(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	client, svr := newClient(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("/activities", func(w http.ResponseWriter, _ *http.Request) {
+			enc := json.NewEncoder(w)
+			a.NoError(enc.Encode(&hammerhead.ActivitiesPage{
+				TotalItems:  2,
+				TotalPages:  1,
+				PerPage:     2,
+				CurrentPage: 1,
+				Data: []*hammerhead.ActivitySummary{
+					{ID: "a1", Name: "Ride 1"},
+					{ID: "a2", Name: "Ride 2"},
+				},
+			}))
+		})
+	})
+	defer svr.Close()
+
+	acts, err := client.Activities.Activities(t.Context(), activity.Pagination{Total: 1}, "")
+	a.NoError(err)
+	a.Len(acts, 1)
+	a.Equal("a1", acts[0].ID)
+}
+
+func TestFileTransportError(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	client, svr := newClient(t, nil)
+	svr.Close()
+
+	_, err := client.Activities.File(t.Context(), "activity-001")
+	a.Error(err)
 }
