@@ -14,15 +14,15 @@ import (
 )
 
 const (
-	_authURL = "https://api.hammerhead.io/v1/auth"
-	_apiURL  = "https://api.hammerhead.io/v1/api"
+	authURL = "https://api.hammerhead.io/v1/auth"
+	apiURL  = "https://api.hammerhead.io/v1/api"
 )
 
 // Endpoint is Hammerhead's OAuth 2.0 endpoint
 func Endpoint() oauth2.Endpoint {
 	return oauth2.Endpoint{
-		AuthURL:   _authURL + "/oauth/authorize",
-		TokenURL:  _authURL + "/oauth/token",
+		AuthURL:   authURL + "/oauth/authorize",
+		TokenURL:  authURL + "/oauth/token",
 		AuthStyle: oauth2.AuthStyleInParams,
 	}
 }
@@ -45,10 +45,10 @@ func withServices() Option {
 	return func(c *Client) error {
 		c.Activities = &ActivitiesService{client: c}
 		if c.authURL == "" {
-			c.authURL = _authURL
+			c.authURL = authURL
 		}
 		if c.apiURL == "" {
-			c.apiURL = _apiURL
+			c.apiURL = apiURL
 		}
 		return nil
 	}
