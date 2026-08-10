@@ -33,6 +33,7 @@ type Client struct {
 	authURL string
 	apiURL  string
 
+	Auth       *AuthService
 	Activities *ActivitiesService
 }
 
@@ -43,6 +44,7 @@ func (c *Client) Exporter() activity.Exporter {
 
 func withServices() Option {
 	return func(c *Client) error {
+		c.Auth = &AuthService{client: c}
 		c.Activities = &ActivitiesService{client: c}
 		if c.authURL == "" {
 			c.authURL = authURL
