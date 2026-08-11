@@ -31,7 +31,7 @@ type ActivityType string
 
 const (
 	ActivityTypeRide         ActivityType = "RIDE"
-	ActivityTypeEbike        ActivityType = "EBIKE"
+	ActivityTypeEBike        ActivityType = "EBIKE"
 	ActivityTypeMountainBike ActivityType = "MOUNTAIN_BIKE"
 	ActivityTypeGravel       ActivityType = "GRAVEL"
 	ActivityTypeEMountain    ActivityType = "EMOUNTAIN_BIKE"
