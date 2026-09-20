@@ -115,6 +115,23 @@ func TestDo(t *testing.T) {
 				a.Equal("Not Found", err.Error())
 			},
 		},
+		{
+			// mirrors a real provider's rate-limit body, which carries a message
+			// but no code; SetDefaults must backfill Code from the 429 status.
+			name: "error 429 rate limited exposes HTTPStatusCode",
+			before: func(mux *http.ServeMux) {
+				mux.HandleFunc("/ratelimit", func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusTooManyRequests)
+					_, _ = w.Write([]byte(`{"message": "Rate Limit Exceeded"}`))
+				})
+			},
+			after: func(_ *result, err error) {
+				a.Error(err)
+				var f interface{ HTTPStatusCode() int }
+				a.ErrorAs(err, &f)
+				a.Equal(http.StatusTooManyRequests, f.HTTPStatusCode())
+			},
+		},
 	}
 
 	for i := range tests {
@@ -134,6 +151,8 @@ func TestDo(t *testing.T) {
 				path = "/bad"
 			case "error 4xx with empty body":
 				path = "/empty"
+			case "error 429 rate limited exposes HTTPStatusCode":
+				path = "/ratelimit"
 			}
 
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, svr.URL+path, nil)
