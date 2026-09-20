@@ -19,6 +19,7 @@ import (
 type Fault interface {
 	error
 	SetDefaults(code int, message string)
+	HTTPStatusCode() int
 }
 
 // Client holds the common HTTP state shared by all API clients.

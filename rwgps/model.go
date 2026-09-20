@@ -36,6 +36,11 @@ func (f *Fault) Error() string {
 	return f.Message
 }
 
+// HTTPStatusCode returns the HTTP status code of the response which produced this Fault.
+func (f *Fault) HTTPStatusCode() int {
+	return f.Code
+}
+
 // SetDefaults populates Code and Message from the HTTP response when the body does not supply them.
 func (f *Fault) SetDefaults(code int, message string) {
 	if f.Code == 0 {

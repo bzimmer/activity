@@ -21,6 +21,8 @@ type testFaultError struct {
 
 func (f *testFaultError) Error() string { return f.Message }
 
+func (f *testFaultError) HTTPStatusCode() int { return f.Code }
+
 func (f *testFaultError) SetDefaults(code int, message string) {
 	if f.Code == 0 {
 		f.Code = code
