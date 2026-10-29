@@ -41,14 +41,11 @@ func Paginate(ctx context.Context, paginator Paginator, spec Pagination) error {
 	if count <= 0 {
 		count = paginator.PageSize()
 	}
-	if total > 0 {
-		if total <= count {
-			count = total
-		}
-		// if requesting only one page of data then optimize
-		if start <= 1 && total < paginator.PageSize() {
-			count = total
-		}
+	// if the request fits in one page from the beginning then fetch only what
+	// is needed; past the first page the count stays as requested because
+	// `start` counts pages of that size
+	if total > 0 && start <= 1 && (total <= count || total < paginator.PageSize()) {
+		count = total
 	}
 	return do(ctx, paginator, Pagination{Total: total, Start: start, Count: count})
 }

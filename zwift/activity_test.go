@@ -378,3 +378,27 @@ func (s *slowTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	<-req.Context().Done()
 	return nil, req.Context().Err()
 }
+
+func TestActivitiesOffset(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	// zwift pages by row offset, which must follow the requested page size
+	// rather than the default
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/profiles/1037/activities/", func(w http.ResponseWriter, r *http.Request) {
+		a.Equal("5", r.URL.Query().Get("start"))
+		a.Equal("5", r.URL.Query().Get("limit"))
+		var res []*zwift.Activity
+		for i := range 5 {
+			res = append(res, &zwift.Activity{ID: 882920 + int64(i)})
+		}
+		a.NoError(json.NewEncoder(w).Encode(res))
+	})
+	client, svr := newClient(t, mux)
+	defer svr.Close()
+	activities, err := client.Activity.Activities(
+		context.Background(), 1037, activity.Pagination{Start: 2, Count: 5, Total: 5})
+	a.NoError(err)
+	a.Len(activities, 5)
+}

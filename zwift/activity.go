@@ -38,7 +38,7 @@ func (p *paginator) Do(ctx context.Context, spec activity.Pagination) (int, erro
 	// pagination uses the concept of page (based on strava), zwift uses an offset by row
 	//  since pagination starts with page 1 (again, strava), subtract one from `start`
 	count := spec.Count
-	start := int64((spec.Start - 1) * p.PageSize())
+	start := int64((spec.Start - 1) * count)
 
 	uri := fmt.Sprintf("api/profiles/%d/activities/?start=%d&limit=%d", p.athleteID, start, count)
 	req, err := p.service.client.newAPIRequest(ctx, http.MethodGet, uri)

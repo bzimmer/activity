@@ -114,3 +114,73 @@ func TestPaginate(t *testing.T) {
 		})
 	}
 }
+
+// specPaginator records the specs it is asked for and returns a full page
+type specPaginator struct {
+	specs []activity.Pagination
+	count int
+}
+
+func (p *specPaginator) PageSize() int {
+	return 100
+}
+
+func (p *specPaginator) Count() int {
+	return p.count
+}
+
+func (p *specPaginator) Do(_ context.Context, spec activity.Pagination) (int, error) {
+	p.specs = append(p.specs, spec)
+	p.count += spec.Count
+	return spec.Count, nil
+}
+
+func TestPaginateSpec(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	tests := []struct {
+		name       string
+		pagination activity.Pagination
+		specs      []activity.Pagination
+	}{
+		{
+			name:       "one short page from the beginning",
+			pagination: activity.Pagination{Total: 50},
+			specs:      []activity.Pagination{{Total: 50, Start: 1, Count: 50}},
+		},
+		{
+			name:       "total under the requested count from the beginning",
+			pagination: activity.Pagination{Total: 5, Count: 10, Start: 1},
+			specs:      []activity.Pagination{{Total: 5, Start: 1, Count: 5}},
+		},
+		{
+			// page three of the default size, not of fifty
+			name:       "short total past the first page keeps the page size",
+			pagination: activity.Pagination{Total: 50, Start: 3},
+			specs:      []activity.Pagination{{Total: 50, Start: 3, Count: 100}},
+		},
+		{
+			// page two of ten, not of five
+			name:       "total under the requested count past the first page",
+			pagination: activity.Pagination{Total: 5, Count: 10, Start: 2},
+			specs:      []activity.Pagination{{Total: 5, Start: 2, Count: 10}},
+		},
+		{
+			name:       "requested count across pages",
+			pagination: activity.Pagination{Total: 200, Count: 100, Start: 2},
+			specs: []activity.Pagination{
+				{Total: 200, Start: 2, Count: 100},
+				{Total: 200, Start: 3, Count: 100},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			p := &specPaginator{}
+			a.NoError(activity.Paginate(context.Background(), p, tt.pagination))
+			a.Equal(tt.specs, p.specs)
+		})
+	}
+}

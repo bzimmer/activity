@@ -307,3 +307,31 @@ func TestStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestTripsOffset(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	// rwgps pages by row offset, which must follow the requested page size
+	// rather than the default
+	client, svr := newClient(func(mux *http.ServeMux) {
+		mux.HandleFunc("/users/88272/trips.json", func(w http.ResponseWriter, r *http.Request) {
+			m := make(map[string]string)
+			a.NoError(json.NewDecoder(r.Body).Decode(&m))
+			a.Equal("10", m["offset"])
+			a.Equal("10", m["limit"])
+			res := struct {
+				Results []*rwgps.Trip `json:"results"`
+			}{}
+			for i := range 10 {
+				res.Results = append(res.Results, &rwgps.Trip{ID: int64(i)})
+			}
+			a.NoError(json.NewEncoder(w).Encode(res))
+		})
+	})
+	defer svr.Close()
+	trips, err := client.Trips.Trips(
+		context.TODO(), rwgps.UserID(88272), activity.Pagination{Start: 2, Count: 10, Total: 10})
+	a.NoError(err)
+	a.Len(trips, 10)
+}

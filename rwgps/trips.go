@@ -39,7 +39,7 @@ func (p *tripsPaginator) Do(ctx context.Context, spec activity.Pagination) (int,
 	params := map[string]string{
 		// pagination uses the concept of page (based on strava), rwgps uses an offset by row
 		//  since pagination starts with page 1 (again, strava), subtract one from `start`
-		"offset": strconv.FormatInt(int64((spec.Start-1)*p.PageSize()), 10),
+		"offset": strconv.FormatInt(int64((spec.Start-1)*spec.Count), 10),
 		"limit":  strconv.FormatInt(int64(spec.Count), 10),
 	}
 	req, err := p.service.client.newAPIRequest(ctx, uri, params)
