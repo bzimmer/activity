@@ -51,3 +51,20 @@ func TestTripEncoding(t *testing.T) {
 		})
 	}
 }
+
+func TestTripGPXNullTrackPoint(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trip := &rwgps.Trip{
+		Type:        rwgps.TypeTrip.String(),
+		TrackPoints: []*rwgps.TrackPoint{{Latitude: 47, Longitude: 8}, nil, {Latitude: 47.1, Longitude: 8.1}},
+	}
+	x, err := trip.GPX()
+	a.NoError(err)
+	a.Len(x.Trk[0].TrkSeg[0].TrkPt, 2)
+
+	trip.Type = rwgps.TypeRoute.String()
+	x, err = trip.GPX()
+	a.NoError(err)
+	a.Len(x.Rte[0].RtePt, 2)
+}

@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/twpayne/go-geom"
 	"github.com/twpayne/go-gpx"
 
 	"github.com/bzimmer/activity"
@@ -14,54 +13,36 @@ import (
 var _ activity.GPXEncoder = (*Ride)(nil)
 
 func (r *Ride) GPX() (*gpx.GPX, error) {
-	var layout geom.Layout
-
 	s := r.Streams
-	if s.Latitude == nil && s.Longitude == nil {
+	if s.Latitude == nil || s.Longitude == nil {
 		return nil, errors.New("required lat and lng not found")
 	}
-	switch {
-	case s.Latitude != nil && s.Longitude != nil && s.Elevation != nil:
-		layout = geom.XYZM
-	case s.Latitude != nil && s.Longitude != nil:
-		layout = geom.XYM
-	}
 
-	n := len(s.Latitude)
-	dim := layout.Stride()
-	coords := make([]float64, dim*n)
-	for i := 0; i < n; i++ {
-		x := dim * i
-		t := float64(r.UTCDatetime.Time.Add(time.Second * time.Duration(i)).Unix())
-
-		coords[x+0] = s.Longitude[i]
-		coords[x+1] = s.Latitude[i]
-		switch layout {
-		case geom.XYZM:
-			coords[x+2] = s.Elevation[i]
-			coords[x+3] = t
-		case geom.XYM:
-			coords[x+2] = t
-		case geom.NoLayout, geom.XY, geom.XYZ:
-			// pass
+	// the streams are sampled together, one per second, but guard against a
+	// short one rather than index past its end
+	n := min(len(s.Latitude), len(s.Longitude))
+	pts := make([]gpx.WptType, n)
+	wpts := make([]*gpx.WptType, n)
+	for i := range n {
+		pts[i].Lat = s.Latitude[i]
+		pts[i].Lon = s.Longitude[i]
+		if i < len(s.Elevation) {
+			pts[i].Ele = s.Elevation[i]
 		}
+		pts[i].Time = gpx.MToTime(float64(r.UTCDatetime.Add(time.Second * time.Duration(i)).Unix()))
+		wpts[i] = &pts[i]
 	}
-
-	ls := geom.NewLineStringFlat(layout, coords)
-	mls := geom.NewMultiLineString(ls.Layout())
-	err := mls.Push(ls)
-	if err != nil {
-		return nil, err
-	}
-
-	trk := gpx.NewTrkType(mls)
-	trk.Src = _baseURL
 
 	return &gpx.GPX{
 		Creator: activity.UserAgent,
 		Metadata: &gpx.MetadataType{
 			Name: strconv.FormatInt(r.ID, 10),
 		},
-		Trk: []*gpx.TrkType{trk},
+		Trk: []*gpx.TrkType{
+			{
+				Src:    _baseURL,
+				TrkSeg: []*gpx.TrkSegType{{TrkPt: wpts}},
+			},
+		},
 	}, nil
 }

@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/martinlindhe/unit"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bzimmer/activity/strava"
 )
 
 func TestGPXRoute(t *testing.T) {
@@ -149,4 +152,69 @@ func TestGPXActivity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGPXActivityMalformedStreams(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	tests := []struct {
+		name   string
+		act    *strava.Activity
+		points int
+		err    bool
+	}{
+		{
+			name: "no map and no streams",
+			act:  &strava.Activity{},
+			err:  true,
+		},
+		{
+			name: "latlng shorter than time",
+			act: &strava.Activity{Streams: &strava.Streams{
+				LatLng:    &strava.CoordinateStream{Data: []strava.Coordinates{{47, 8}}},
+				Time:      &strava.Stream{Data: []float64{0, 1, 2}},
+				Elevation: &strava.LengthStream{Data: []unit.Length{100, 101, 102}},
+			}},
+			points: 1,
+		},
+		{
+			name: "elevation shorter than latlng",
+			act: &strava.Activity{Streams: &strava.Streams{
+				LatLng:    &strava.CoordinateStream{Data: []strava.Coordinates{{47, 8}, {47.1, 8.1}}},
+				Time:      &strava.Stream{Data: []float64{0, 1}},
+				Elevation: &strava.LengthStream{Data: []unit.Length{100}},
+			}},
+			points: 2,
+		},
+		{
+			name: "null and short samples are dropped",
+			act: &strava.Activity{Streams: &strava.Streams{
+				LatLng: &strava.CoordinateStream{Data: []strava.Coordinates{{47, 8}, nil, {47.1}, {47.2, 8.2}}},
+				Time:   &strava.Stream{Data: []float64{0, 1, 2, 3}},
+			}},
+			points: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			x, err := tt.act.GPX()
+			if tt.err {
+				a.Error(err)
+				a.Nil(x)
+				return
+			}
+			a.NoError(err)
+			a.Len(x.Trk[0].TrkSeg[0].TrkPt, tt.points)
+		})
+	}
+}
+
+func TestGPXRouteNoMap(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	x, err := (&strava.Route{}).GPX()
+	a.Error(err)
+	a.Nil(x)
 }

@@ -1,6 +1,7 @@
 package strava
 
 import (
+	"errors"
 	"time"
 
 	"github.com/martinlindhe/unit"
@@ -199,6 +200,9 @@ type Map struct {
 // LineString of the map
 // This function first checks for a Polyline and then a SummaryPolyline, returning the first non-nil LineString
 func (m *Map) LineString() (*geom.LineString, error) {
+	if m == nil {
+		return nil, errors.New("no map available")
+	}
 	return polylineToLineString(m.Polyline, m.SummaryPolyline)
 }
 

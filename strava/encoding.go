@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/martinlindhe/unit"
 	"github.com/twpayne/go-geom"
 	"github.com/twpayne/go-gpx"
 	"github.com/twpayne/go-polyline"
@@ -46,22 +47,16 @@ func (a *Activity) GPX() (*gpx.GPX, error) {
 		if err != nil {
 			return nil, err
 		}
-		mls := geom.NewMultiLineString(ls.Layout())
-		err = mls.Push(ls)
-		if err != nil {
-			return nil, err
-		}
-		trk := gpx.NewTrkType(mls)
-		trk.Name = a.Name
-		trk.Desc = a.Description
-		trk.Link = []*gpx.LinkType{
-			{
-				HREF: fmt.Sprintf("https://strava.com/activities/%d", a.ID),
-			},
-		}
 		x := &gpx.GPX{
 			Version: gpxVersion,
-			Trk:     []*gpx.TrkType{trk},
+			Trk: []*gpx.TrkType{
+				{
+					Name:   a.Name,
+					Desc:   a.Description,
+					Link:   []*gpx.LinkType{{HREF: fmt.Sprintf("https://strava.com/activities/%d", a.ID)}},
+					TrkSeg: []*gpx.TrkSegType{{TrkPt: waypoints(ls)}},
+				},
+			},
 		}
 		return x, nil
 	}
@@ -74,19 +69,35 @@ func (r *Route) GPX() (*gpx.GPX, error) {
 	if err != nil {
 		return nil, err
 	}
-	rte := gpx.NewRteType(ls)
-	rte.Name = r.Name
-	rte.Desc = r.Description
-	rte.Link = []*gpx.LinkType{
-		{
-			HREF: fmt.Sprintf("https://strava.com/routes/%d", r.ID),
-		},
-	}
 	x := &gpx.GPX{
 		Version: gpxVersion,
-		Rte:     []*gpx.RteType{rte},
+		Rte: []*gpx.RteType{
+			{
+				Name:  r.Name,
+				Desc:  r.Description,
+				Link:  []*gpx.LinkType{{HREF: fmt.Sprintf("https://strava.com/routes/%d", r.ID)}},
+				RtePt: waypoints(ls),
+			},
+		},
 	}
 	return x, nil
+}
+
+// waypoints converts an XY line string to waypoints backed by a single
+// allocation rather than one per point
+func waypoints(ls *geom.LineString) []*gpx.WptType {
+	coords := ls.FlatCoords()
+	stride := ls.Stride()
+	n := ls.NumCoords()
+	pts := make([]gpx.WptType, n)
+	wpts := make([]*gpx.WptType, n)
+	for i := range n {
+		x := stride * i
+		pts[i].Lat = coords[x+1]
+		pts[i].Lon = coords[x+0]
+		wpts[i] = &pts[i]
+	}
+	return wpts
 }
 
 func (a *Activity) toGPXFromStreams() (*gpx.GPX, error) {
@@ -96,16 +107,33 @@ func (a *Activity) toGPXFromStreams() (*gpx.GPX, error) {
 	if a.Streams.LatLng == nil || a.Streams.Time == nil {
 		return nil, errors.New("both latlng and time streams are required for gpx encoding")
 	}
-	points := make([]*gpx.WptType, len(a.Streams.Time.Data))
-	for i := range a.Streams.Time.Data {
-		points[i] = &gpx.WptType{
-			Lat:  a.Streams.LatLng.Data[i][0],
-			Lon:  a.Streams.LatLng.Data[i][1],
-			Time: a.StartDate.Add(time.Duration(a.Streams.Time.Data[i]) * time.Second),
+	// the streams are sampled together but guard against a short one rather
+	// than index past its end
+	latlng, times := a.Streams.LatLng.Data, a.Streams.Time.Data
+	var elevation []unit.Length
+	if a.Streams.Elevation != nil {
+		elevation = a.Streams.Elevation.Data
+	}
+	n := min(len(latlng), len(times))
+	pts := make([]gpx.WptType, 0, n)
+	for i := range n {
+		// a sample without both coordinates has no place on the track
+		if len(latlng[i]) < 2 {
+			continue
 		}
-		if a.Streams.Elevation != nil {
-			points[i].Ele = a.Streams.Elevation.Data[i].Meters()
+		pt := gpx.WptType{
+			Lat:  latlng[i][0],
+			Lon:  latlng[i][1],
+			Time: a.StartDate.Add(time.Duration(times[i]) * time.Second),
 		}
+		if i < len(elevation) {
+			pt.Ele = elevation[i].Meters()
+		}
+		pts = append(pts, pt)
+	}
+	points := make([]*gpx.WptType, len(pts))
+	for i := range pts {
+		points[i] = &pts[i]
 	}
 	x := &gpx.GPX{
 		Version: gpxVersion,
