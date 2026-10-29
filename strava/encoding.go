@@ -18,21 +18,21 @@ var _ activity.GPXEncoder = (*Activity)(nil)
 const gpxVersion = "1.1"
 
 func polylineToLineString(polylines ...string) (*geom.LineString, error) {
-	const n = 2
-	var coords []float64
+	// the codec Strava uses, the go-polyline default
+	codec := polyline.Codec{Dim: 2, Scale: 1e5}
 	for _, p := range polylines {
 		if p == "" {
 			continue
 		}
-		c, _, err := polyline.DecodeCoords([]byte(p))
+		// each value takes at least one byte, usually two to four, so half the
+		// polyline's length is a close capacity guess that rarely needs to grow
+		coords, _, err := codec.DecodeFlatCoords(make([]float64, 0, len(p)/2), []byte(p))
 		if err != nil {
 			return nil, err
 		}
-		coords = make([]float64, len(c)*n)
-		for i := 0; i < len(c); i++ {
-			x := n * i
-			coords[x+0] = c[i][1]
-			coords[x+1] = c[i][0]
+		// polylines are [lat, lng] while geom.XY is [lng, lat]
+		for i := 0; i+1 < len(coords); i += 2 {
+			coords[i], coords[i+1] = coords[i+1], coords[i]
 		}
 		return geom.NewLineStringFlat(geom.XY, coords), nil
 	}
