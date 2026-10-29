@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
@@ -372,4 +374,45 @@ func TestApplyAutoRefresh(t *testing.T) {
 	c := httpclient.New(func() *testFaultError { return &testFaultError{} })
 	a.NoError(httpclient.ApplyAutoRefresh(context.Background(), c))
 	a.NotNil(c.HTTP)
+}
+
+func TestDoReusesConnection(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	// a chunked body whose JSON value ends before the body does: the decoder
+	// stops at the value and the body is closed early, which since go1.27 the
+	// transport drains so the connection still returns to the pool
+	for _, status := range []int{http.StatusOK, http.StatusBadRequest} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			t.Parallel()
+			client, svr := newClient(func(mux *http.ServeMux) {
+				mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(status)
+					_, _ = w.Write([]byte(`{"code":0,"message":"hi"}`))
+					if f, ok := w.(http.Flusher); ok {
+						f.Flush()
+					}
+					// arrive after the decoder has finished with the value
+					time.Sleep(20 * time.Millisecond)
+					_, _ = w.Write([]byte("\n\n"))
+				})
+			})
+			defer svr.Close()
+
+			// with one connection allowed, each request waits for the last one's
+			// connection to be either returned to the pool or closed
+			a.NoError(httpclient.ApplyTransport(client, &http.Transport{MaxConnsPerHost: 1}))
+			var reused []bool
+			for range 3 {
+				ctx := httptrace.WithClientTrace(context.Background(), &httptrace.ClientTrace{
+					GotConn: func(info httptrace.GotConnInfo) { reused = append(reused, info.Reused) },
+				})
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, svr.URL+"/", nil)
+				a.NoError(err)
+				_ = client.Do(req, &map[string]any{})
+			}
+			a.Equal([]bool{false, true, true}, reused)
+		})
+	}
 }
