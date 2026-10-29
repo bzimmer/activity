@@ -1,10 +1,14 @@
 package garmin
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"time"
 
@@ -17,6 +21,9 @@ const (
 	downloadURI  = "download-service/files/activity/"
 	acceptJSON   = "application/json"
 	acceptOrigin = "application/zip, application/x-zip-compressed, application/octet-stream"
+	// maxFileSize bounds an unzipped activity file; the largest FIT files
+	// run to a few MB
+	maxFileSize = 256 << 20
 )
 
 // ActivitiesService provides access to Garmin activity endpoints
@@ -79,29 +86,69 @@ func (s *ActivitiesService) Activities(
 	return p.activities, nil
 }
 
-// File downloads an activity's original upload: a ZIP holding its FIT
-// file. Garmin answers 404 for a manual entry, which has none, and 403
-// for an activity from a watch older than FIT, which Connect only exports
-// as TCX or GPX.
+// File downloads an activity's original upload, which Garmin serves as a
+// ZIP holding the one file the device uploaded, and returns that file:
+// normally FIT, though an older upload can be TCX or GPX. Garmin answers
+// 404 for a manual entry, which has none, and 403 for an activity from a
+// watch older than FIT, which Connect only exports as TCX or GPX.
 func (s *ActivitiesService) File(ctx context.Context, activityID int64) (*activity.File, error) {
 	id := strconv.FormatInt(activityID, 10)
 	req, err := s.client.newAPIRequest(ctx, http.MethodGet, downloadURI+id, acceptOrigin)
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.client.send(req) //nolint:bodyclose // the caller closes the returned File
+	res, err := s.client.send(req)
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	name, data, err := unzipOne(body)
+	if err != nil {
+		return nil, fmt.Errorf("activity %s: %w", id, err)
+	}
 	return &activity.File{
-		Reader:   res.Body,
-		Filename: fmt.Sprintf("%s.zip", id),
+		Reader:   bytes.NewReader(data),
+		Filename: name,
 		Name:     id,
-		Format:   activity.FormatOriginal,
+		Format:   activity.ToFormat(path.Ext(name)),
 	}, nil
 }
 
-// Export implements activity.Exporter by downloading an activity's original upload.
+// unzipOne returns the base name and contents of the only file in a ZIP.
+func unzipOne(body []byte) (string, []byte, error) {
+	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		return "", nil, fmt.Errorf("reading the original upload: %w", err)
+	}
+	var files []*zip.File
+	for _, f := range zr.File {
+		if !f.FileInfo().IsDir() {
+			files = append(files, f)
+		}
+	}
+	if len(files) != 1 {
+		return "", nil, fmt.Errorf("expected one file in the original upload, found %d", len(files))
+	}
+	rc, err := files[0].Open()
+	if err != nil {
+		return "", nil, err
+	}
+	defer rc.Close()
+	data, err := io.ReadAll(io.LimitReader(rc, maxFileSize+1))
+	if err != nil {
+		return "", nil, err
+	}
+	if len(data) > maxFileSize {
+		return "", nil, fmt.Errorf("%s is larger than %d bytes", files[0].Name, maxFileSize)
+	}
+	return path.Base(files[0].Name), data, nil
+}
+
+// Export implements activity.Exporter by downloading the file of an activity's original upload.
 func (s *ActivitiesService) Export(ctx context.Context, activityID int64) (*activity.Export, error) {
 	f, err := s.File(ctx, activityID)
 	if err != nil {

@@ -1,8 +1,9 @@
 package garmin_test
 
 import (
+	"archive/zip"
+	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -166,6 +167,24 @@ func TestActivities(t *testing.T) {
 	}
 }
 
+// zipped returns a ZIP holding the named files, each containing its name.
+func zipped(t *testing.T, names ...string) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	zw := zip.NewWriter(&b)
+	for _, name := range names {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = w.Write([]byte(name))
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
 func TestFile(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
@@ -176,17 +195,42 @@ func TestFile(t *testing.T) {
 		after func(f *activity.File, err error)
 	}{
 		{
-			name: "original upload",
+			name: "fit upload",
 			id:   1,
 			after: func(f *activity.File, err error) {
 				a.NoError(err)
 				defer f.Close()
-				a.Equal("1.zip", f.Filename)
+				a.Equal("1_ACTIVITY.fit", f.Filename)
 				a.Equal("1", f.Name)
-				a.Equal(activity.FormatOriginal, f.Format)
+				a.Equal(activity.FormatFIT, f.Format)
 				b, err := io.ReadAll(f)
 				a.NoError(err)
-				a.Equal("PK-zip-bytes", string(b))
+				a.Equal("dir/1_ACTIVITY.fit", string(b))
+			},
+		},
+		{
+			name: "older tcx upload keeps its format",
+			id:   4,
+			after: func(f *activity.File, err error) {
+				a.NoError(err)
+				a.Equal("run.tcx", f.Filename)
+				a.Equal(activity.FormatTCX, f.Format)
+			},
+		},
+		{
+			name: "more than one file",
+			id:   5,
+			after: func(f *activity.File, err error) {
+				a.Nil(f)
+				a.ErrorContains(err, "activity 5: expected one file in the original upload, found 2")
+			},
+		},
+		{
+			name: "not a zip",
+			id:   6,
+			after: func(f *activity.File, err error) {
+				a.Nil(f)
+				a.ErrorContains(err, "reading the original upload")
 			},
 		},
 		{
@@ -214,7 +258,14 @@ func TestFile(t *testing.T) {
 		mux.HandleFunc(downloadPath, func(w http.ResponseWriter, r *http.Request) {
 			switch r.PathValue("id") {
 			case "1":
-				_, _ = w.Write([]byte("PK-zip-bytes"))
+				// Garmin's archives nest nothing, but a path must still come out as its base name
+				_, _ = w.Write(zipped(t, "dir/", "dir/1_ACTIVITY.fit"))
+			case "4":
+				_, _ = w.Write(zipped(t, "run.tcx"))
+			case "5":
+				_, _ = w.Write(zipped(t, "a.fit", "b.fit"))
+			case "6":
+				_, _ = w.Write([]byte("not a zip"))
 			case "3":
 				w.WriteHeader(http.StatusForbidden)
 			default:
@@ -243,7 +294,7 @@ func TestExport(t *testing.T) {
 				http.NotFound(w, r)
 				return
 			}
-			_, _ = fmt.Fprint(w, "PK")
+			_, _ = w.Write(zipped(t, "7_ACTIVITY.fit"))
 		})
 	})
 	defer svr.Close()
@@ -252,6 +303,7 @@ func TestExport(t *testing.T) {
 	a.NoError(err)
 	defer exp.Close()
 	a.Equal(int64(7), exp.ID)
+	a.Equal(activity.FormatFIT, exp.Format)
 
 	exp, err = client.Exporter().Export(t.Context(), 8)
 	a.Error(err)
